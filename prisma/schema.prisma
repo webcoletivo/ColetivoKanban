@@ -1,0 +1,359 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER & AUTHENTICATION
+// ==========================================
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  boardMemberships BoardMember[]
+  createdBoards    Board[]        @relation("CreatedBoards")
+  createdCards     Card[]         @relation("CreatedCards")
+  uploadedFiles    Attachment[]
+  comments         CardComment[]
+  activities       CardActivity[]
+  sentInvitations  Invitation[]   @relation("SentInvitations")
+  acceptedInvites  Invitation[]   @relation("AcceptedInvites")
+  preferences      UserPreferences?
+
+  @@index([email])
+}
+
+// ==========================================
+// USER PREFERENCES
+// ==========================================
+
+model UserPreferences {
+  id                      String   @id @default(uuid())
+  theme                   String   @default("system") // light, dark, system
+  timezone                String   @default("America/Sao_Paulo")
+  emailInvitesEnabled     Boolean  @default(true)
+  notificationsEnabled    Boolean  @default(true)
+  language                String   @default("pt-BR")
+  updatedAt               DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ==========================================
+// BOARDS & MEMBERSHIP
+// ==========================================
+
+model Board {
+  id         String    @id @default(uuid())
+  name       String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+  deletedAt  DateTime?
+
+  backgroundImageUrl String?
+  backgroundImageKey String?
+
+  createdById String
+  createdBy   User   @relation("CreatedBoards", fields: [createdById], references: [id])
+
+  // Relations
+  members     BoardMember[]
+  columns     Column[]
+  cards       Card[]
+  labels      Label[]
+  invitations Invitation[]
+
+  @@index([createdById])
+}
+
+model BoardMember {
+  id        String   @id @default(uuid())
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+  @@index([boardId])
+  @@index([userId])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+// ==========================================
+// COLUMNS & CARDS
+// ==========================================
+
+model Column {
+  id         String    @id @default(uuid())
+  title      String
+  position   Float
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  cards Card[]
+  automations ColumnAutomation[]
+
+  @@index([boardId])
+}
+
+model Card {
+  id          String    @id @default(uuid())
+  title       String
+  description String?   @db.Text
+  dueAt       DateTime?
+  isCompleted Boolean   @default(false)
+  position    Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
+
+  // Card Cover
+  coverType     String?   @default("none") // none, color, image
+  coverColor    String?   // hex color
+  coverImageUrl String?   // image url
+  coverSize     String?   @default("strip") // strip, full
+  coverImageKey String?   // storage key
+
+  boardId     String
+  board       Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  columnId    String
+  column      Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User   @relation("CreatedCards", fields: [createdById], references: [id])
+
+  // Relations
+  labels      CardLabel[]
+  checklists  Checklist[]
+  attachments Attachment[]
+  comments    CardComment[]
+  activities  CardActivity[]
+
+  @@index([boardId])
+  @@index([columnId])
+  @@index([createdById])
+}
+
+// ==========================================
+// LABELS
+// ==========================================
+
+model Label {
+  id        String   @id @default(uuid())
+  name      String
+  color     String
+  createdAt DateTime @default(now())
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  cards CardLabel[]
+
+  @@index([boardId])
+}
+
+model CardLabel {
+  cardId  String
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  labelId String
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, labelId])
+}
+
+// ==========================================
+// CHECKLISTS
+// ==========================================
+
+model Checklist {
+  id        String   @id @default(uuid())
+  title     String
+  position  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  items ChecklistItem[]
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  text        String
+  dueAt       DateTime?
+  isCompleted Boolean   @default(false)
+  position    Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+}
+
+// ==========================================
+// ATTACHMENTS
+// ==========================================
+
+model Attachment {
+  id         String    @id @default(uuid())
+  fileName   String
+  fileSize   BigInt
+  mimeType   String
+  storageKey String
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+
+  cardId       String
+  card         Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User   @relation(fields: [uploadedById], references: [id])
+
+  @@index([cardId])
+}
+
+// ==========================================
+// COMMENTS & ACTIVITIES
+// ==========================================
+
+model CardComment {
+  id        String    @id @default(uuid())
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([cardId])
+  @@index([userId])
+}
+
+model CardActivity {
+  id        String       @id @default(uuid())
+  type      ActivityType
+  payload   Json
+  createdAt DateTime     @default(now())
+
+  cardId  String
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  actorId String?
+  actor   User?  @relation(fields: [actorId], references: [id])
+
+  @@index([cardId])
+  @@index([actorId])
+}
+
+enum ActivityType {
+  CARD_CREATED
+  CARD_MOVED
+  CARD_UPDATED
+  CARD_ARCHIVED
+  CARD_UNARCHIVED
+  DUE_SET
+  DUE_REMOVED
+  DUE_COMPLETED
+  DUE_UNCOMPLETED
+  LABEL_ADDED
+  LABEL_REMOVED
+  CHECKLIST_CREATED
+  CHECKLIST_DELETED
+  CHECKLIST_ITEM_ADDED
+  CHECKLIST_ITEM_COMPLETED
+  CHECKLIST_ITEM_UNCOMPLETED
+  CHECKLIST_ITEM_DELETED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+  COMMENT_ADDED
+  COMMENT_EDITED
+  COMMENT_DELETED
+}
+
+// ==========================================
+// INVITATIONS
+// ==========================================
+
+model Invitation {
+  id        String           @id @default(uuid())
+  email     String
+  tokenHash String           @unique
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  boardId      String
+  board        Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  invitedById  String
+  invitedBy    User   @relation("SentInvitations", fields: [invitedById], references: [id])
+  acceptedById String?
+  acceptedBy   User?  @relation("AcceptedInvites", fields: [acceptedById], references: [id])
+
+  @@index([boardId])
+  @@index([email])
+  @@index([tokenHash])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+// ==========================================
+// AUTOMATIONS
+// ==========================================
+
+model ColumnAutomation {
+  id        String         @id @default(uuid())
+  type      AutomationType
+  payload   Json
+  enabled   Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  columnId String
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@index([columnId])
+}
+
+enum AutomationType {
+  MOVE_TO_COLUMN
+  COPY_TO_COLUMN
+  ADD_LABEL
+}

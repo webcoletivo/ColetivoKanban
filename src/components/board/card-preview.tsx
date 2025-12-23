@@ -1,0 +1,335 @@
+'use client'
+
+import * as React from 'react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Clock, MessageSquare, Paperclip, CheckSquare, Circle, CheckCircle2, Check } from 'lucide-react'
+import { cn, formatDate, isOverdue, isDueToday } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
+
+interface CardPreviewProps {
+  boardId: string
+  columnId: string
+  card: {
+    id: string
+    title: string
+    description: string | null
+    dueAt: string | null
+    isCompleted: boolean
+    labels: Array<{ id: string; name: string; color: string }>
+    checklistProgress: { total: number; completed: number }
+    commentCount: number
+    attachmentCount: number
+    coverType?: string | null
+    coverColor?: string | null
+    coverImageUrl?: string | null
+    coverSize?: string | null
+  }
+  onClick?: () => void
+  onContextMenu?: (e: React.MouseEvent, cardId: string, cardRect: DOMRect) => void
+  onQuickUpdate?: (cardId: string, data: { title: string }) => void
+  isDragging?: boolean
+  isActive?: boolean
+  isEditing?: boolean
+  onSetEditing?: (editing: boolean) => void
+}
+
+export function CardPreview({ 
+  card, 
+  boardId,
+  columnId, 
+  onClick, 
+  onContextMenu,
+  onQuickUpdate,
+  isDragging: isDraggingProp,
+  isActive,
+  isEditing,
+  onSetEditing
+}: CardPreviewProps) {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+  const [tempTitle, setTempTitle] = React.useState(card.title)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  const toggleCompleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/cards/${card.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isCompleted: !card.isCompleted }),
+      })
+      if (!res.ok) throw new Error('Erro ao atualizar status')
+      return res.json()
+    },
+    onMutate: async () => {
+      // Optimistic update would require more complex cache updates, 
+      // for now relying on fast server response + invalidation
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+      queryClient.invalidateQueries({ queryKey: ['card', card.id] })
+    },
+    onError: () => {
+      addToast('error', 'Erro ao atualizar status')
+    },
+  })
+
+  const handleToggleComplete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    toggleCompleteMutation.mutate()
+  }
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: card.id,
+    disabled: isEditing, // Disable drag while editing
+    data: { type: 'card', card, columnId },
+  })
+
+  // Focus textarea when quick editing starts
+  React.useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      setTempTitle(card.title)
+      textareaRef.current.focus()
+      textareaRef.current.select()
+    }
+  }, [isEditing, card.title])
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (onContextMenu) {
+      e.preventDefault()
+      e.stopPropagation()
+      const cardRect = e.currentTarget.getBoundingClientRect()
+      onContextMenu(e, card.id, cardRect)
+    }
+  }
+
+  const handleQuickSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!tempTitle.trim() || tempTitle === card.title) {
+       onSetEditing?.(false)
+       return
+    }
+    
+    if (onQuickUpdate) {
+      onQuickUpdate(card.id, { title: tempTitle })
+    }
+    onSetEditing?.(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleQuickSave()
+    }
+    if (e.key === 'Escape') {
+      setTempTitle(card.title)
+      onSetEditing?.(false)
+    }
+  }
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const isDragging = isDraggingProp || isSortableDragging
+  const hasChecklist = card.checklistProgress.total > 0
+  const checklistComplete = card.checklistProgress.completed === card.checklistProgress.total
+  const hasDueDate = !!card.dueAt
+  const overdue = hasDueDate && !card.isCompleted && isOverdue(card.dueAt!)
+  const dueToday = hasDueDate && !card.isCompleted && isDueToday(card.dueAt!)
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={(e) => {
+        if (!isEditing) {
+          e.stopPropagation()
+          onClick?.()
+        }
+      }}
+      onContextMenu={handleContextMenu}
+      data-no-drag-scroll
+      data-card-id={card.id}
+      className={cn(
+        'bg-card text-card-foreground rounded-lg shadow-sm border border-border/60 box-border',
+        !isEditing && 'overflow-hidden',
+        'cursor-pointer hover:border-primary/50 hover:shadow-md transition-all duration-200 group relative',
+        isDragging && 'opacity-50 shadow-lg rotate-2',
+        isActive && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_20px_rgba(0,0,0,0.3)] dark:shadow-[0_0_30px_rgba(0,0,0,0.5)]',
+        isEditing && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_25px_rgba(0,0,0,0.4)]',
+        card.isCompleted && 'opacity-60',
+        card.coverType !== 'none' && card.coverSize === 'full' && (card.coverColor || card.coverImageUrl) && 'text-white'
+      )}
+      style={{
+        ...style,
+        ...(card.coverType !== 'none' && card.coverSize === 'full' && (card.coverColor || card.coverImageUrl) ? {
+          backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
+          backgroundImage: card.coverType === 'image' && card.coverImageUrl 
+            ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${card.coverImageUrl})` 
+            : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : {})
+      }}
+    >
+
+
+
+
+      {/* Strip Cover (32px fixed height) */}
+      {card.coverType !== 'none' && card.coverSize === 'strip' && (card.coverColor || card.coverImageUrl) && (
+        <div 
+          className="w-full h-[32px] bg-cover bg-center" // Reduced height for strip cover to match Trello style better if needed, but keeping original structure mostly
+          style={{ 
+            backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
+            backgroundImage: card.coverType === 'image' && card.coverImageUrl ? `url(${card.coverImageUrl})` : 'none',
+          }}
+        />
+      )}
+
+      {/* Card Content Area */}
+      <div className="p-3 relative">
+        {/* Quick Edit Overlay */}
+        {isEditing && (
+          <div 
+            className="absolute top-0 left-0 w-full min-h-full z-[100] bg-card text-card-foreground rounded-lg p-3 flex flex-col gap-3 shadow-[0_20px_50px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] animate-in fade-in zoom-in-95 duration-200"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <textarea
+              ref={textareaRef}
+              value={tempTitle}
+              onChange={(e) => setTempTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-transparent text-sm font-medium leading-snug focus:outline-none resize-none min-h-[60px]"
+              rows={4}
+            />
+            <div className="flex justify-start pb-1">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleQuickSave()
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-semibold rounded shadow-lg hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-start gap-2">
+          {/* Checkbox Column */}
+          {!isEditing && (
+            <div 
+              className={cn(
+                "shrink-0 flex flex-col pt-0.5 transition-all duration-200 ease-in-out overflow-hidden",
+                // Width transition: 0 when hidden, 5 (1.25rem) when visible
+                (card.isCompleted || isActive) ? "w-5 opacity-100 mr-0" : "w-0 opacity-0 -mr-2 group-hover:w-5 group-hover:opacity-100 group-hover:mr-0"
+              )}
+            >
+              <div 
+                role="button"
+                onClick={handleToggleComplete}
+                className={cn(
+                  "w-5 h-5 rounded-full flex items-center justify-center transition-all duration-200 border shadow-sm",
+                  card.isCompleted 
+                    ? "bg-green-100 text-green-600 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/60" 
+                    : "bg-background text-transparent hover:text-muted-foreground border-muted-foreground/30 hover:border-muted-foreground/50 hover:scale-105"
+                )}
+                title={card.isCompleted ? "Marcar como não concluído" : "Marcar como concluído"}
+              >
+                {card.isCompleted && <Check className="h-3 w-3 stroke-[3]" />}
+                {!card.isCompleted && <Check className="h-3 w-3 opacity-0 hover:opacity-100" />}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Column */}
+          <div className="flex-1 min-w-0">
+            {/* Labels */}
+            {card.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {card.labels.map((label) => (
+                  <span
+                    key={label.id}
+                    className="h-2 w-10 rounded-full"
+                    style={{ backgroundColor: label.color }}
+                    title={label.name}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Title */}
+            <p className={cn(
+              'text-sm font-medium leading-snug mb-1 line-clamp-2 break-words',
+              card.isCompleted && 'line-through text-muted-foreground',
+              card.coverType !== 'none' && card.coverSize === 'full' && 'text-shadow-sm font-semibold'
+            )}>
+              {card.title}
+            </p>
+
+            {/* Badges */}
+            {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0) && (
+              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                {/* Due Date */}
+                {hasDueDate && (
+                  <span className={cn(
+                    'flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-secondary/80 transition-colors',
+                    card.isCompleted 
+                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                       : (overdue ? 'bg-destructive/10 text-destructive' : (dueToday ? 'bg-amber-100 text-amber-700' : 'bg-secondary text-muted-foreground'))
+                  )}>
+                    {card.isCompleted ? <CheckSquare className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                    {formatDate(card.dueAt!)}
+                  </span>
+                )}
+
+                {/* Checklist Progress */}
+                {hasChecklist && (
+                  <span className={cn(
+                    'flex items-center gap-1 px-1.5 py-0.5 rounded',
+                    checklistComplete 
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-secondary text-muted-foreground group-hover:text-foreground'
+                  )}>
+                    <CheckSquare className="h-3 w-3" />
+                    {card.checklistProgress.completed}/{card.checklistProgress.total}
+                  </span>
+                )}
+
+                {/* Comments */}
+                {card.commentCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {card.commentCount}
+                  </span>
+                )}
+
+                {/* Attachments */}
+                {card.attachmentCount > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Paperclip className="h-3 w-3" />
+                    {card.attachmentCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
