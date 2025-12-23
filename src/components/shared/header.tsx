@@ -27,6 +27,8 @@ export function DashboardHeader({ user: initialUser }: HeaderProps) {
   // Use current user data if available, otherwise fallback to prop (which is initial state)
   const currentUser = user || initialUser
 
+  if (!currentUser) return null
+
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/40 supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -40,9 +40,9 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://www.google.com https://*.googleusercontent.com",
-              "font-src 'self' data:",
+              "font-src 'self' data: https://fonts.gstatic.com",
               "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com",
               "connect-src 'self' https://*.googleapis.com https://*.google.com",
               "media-src 'self' https://www.youtube.com",
