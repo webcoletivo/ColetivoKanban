@@ -1,4 +1,7 @@
 import nodemailer from 'nodemailer'
+import { prisma } from './prisma'
+
+// Types updated by npx prisma generate
 
 export interface SendEmailParams {
   to: string
@@ -40,8 +43,10 @@ export async function sendEmail({ to, subject, html }: SendEmailParams, retries 
   }
 
   let lastError: any = null
+  let attempts = 0
   
   for (let attempt = 1; attempt <= retries; attempt++) {
+    attempts = attempt
     try {
       const info = await transporter.sendMail({
         from: process.env.SMTP_FROM || `"ColetivoKanban" <no-reply@grupocoletivo.com.br>`,
@@ -51,6 +56,17 @@ export async function sendEmail({ to, subject, html }: SendEmailParams, retries 
       })
       
       console.log(`[Email] Sent successfully to ${to}. MessageId: ${info.messageId}`)
+      
+      // Log success to DB (fire and forget)
+      prisma.emailLog.create({
+        data: {
+          to,
+          subject,
+          status: 'SENT',
+          attempts,
+        }
+      }).catch((err: any) => console.error('[EmailLog] Failed to create success log:', err))
+
       return true
     } catch (error) {
       lastError = error
@@ -73,6 +89,21 @@ export async function sendEmail({ to, subject, html }: SendEmailParams, retries 
     to,
     subject
   })
+  
+  // Log failure to DB
+  try {
+    await prisma.emailLog.create({
+      data: {
+        to,
+        subject,
+        status: 'FAILED',
+        error: lastError instanceof Error ? lastError.message : String(lastError),
+        attempts,
+      }
+    })
+  } catch (err: any) {
+    console.error('[EmailLog] Failed to create failure log:', err)
+  }
   
   throw lastError || new Error('Failed to send email after all attempts')
 }

@@ -359,3 +359,21 @@ enum AutomationType {
   COPY_TO_COLUMN
   ADD_LABEL
 }
+
+// ==========================================
+// EMAIL LOGGING
+// ==========================================
+
+model EmailLog {
+  id        String    @id @default(uuid())
+  to        String
+  subject   String
+  status    String    // SENT, FAILED
+  error     String?   @db.Text
+  attempts  Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([to])
+  @@index([status])
+}
