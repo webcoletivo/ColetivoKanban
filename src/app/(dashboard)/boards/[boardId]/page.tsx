@@ -617,7 +617,7 @@ export default function BoardPage() {
     <div 
       className="h-[calc(100vh-64px)] flex flex-col relative bg-cover bg-center bg-no-repeat transition-all duration-700"
       style={board.backgroundImageUrl ? { 
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${board.backgroundImageUrl})` 
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url("${board.backgroundImageUrl}")` 
       } : undefined}
     >
       {/* Global Focus Backdrop */}

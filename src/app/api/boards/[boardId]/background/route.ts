@@ -5,18 +5,20 @@ import { requireBoardPermission, PermissionError } from '@/lib/permissions'
 import { writeFile, mkdir, unlink } from 'fs/promises'
 import path from 'path'
 
+import { v4 as uuidv4 } from 'uuid'
+
 // POST /api/boards/[boardId]/background - Upload board background
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ boardId: string }> }
 ) {
+  const { boardId } = await params
+  
   try {
     const session = await auth()
     if (!session?.user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
-
-    const { boardId } = await params
 
     // Check if board exists and user has permission
     try {
@@ -54,10 +56,14 @@ export async function POST(
     }
 
     // Local Storage Logic
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const filename = `bg-${Date.now()}-${file.name.replace(/\s+/g, '-')}`
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'boards', boardId)
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
     
+    // Use UUID for filename (safer and consistent with card covers)
+    const fileExtension = file.name.split('.').pop() || 'jpg'
+    const fileName = `${uuidv4()}.${fileExtension}`
+    
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'boards', boardId)
     await mkdir(uploadDir, { recursive: true })
     
     // Delete old file if exists
@@ -71,14 +77,15 @@ export async function POST(
       try {
         await unlink(oldPath)
       } catch (err) {
-        console.warn('Failed to delete old background:', err)
+        console.warn('[Upload] Failed to delete old background:', err)
       }
     }
 
-    await writeFile(path.join(uploadDir, filename), buffer)
+    const filePath = path.join(uploadDir, fileName)
+    await writeFile(filePath, buffer)
 
     // Storage key logic (path relative to boards folder)
-    const storageKey = path.join(boardId, filename).replace(/\\/g, '/')
+    const storageKey = `${boardId}/${fileName}`
     const backgroundImageUrl = `/uploads/boards/${storageKey}`
 
     const updatedBoard = await prisma.board.update({
@@ -91,7 +98,7 @@ export async function POST(
 
     return NextResponse.json(updatedBoard)
   } catch (error) {
-    console.error('Upload board background error:', error)
+    console.error('[Upload] Upload board background error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

@@ -267,7 +267,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
           "h-48 p-4 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden border-border/60 hover:border-primary/50",
           board.backgroundImageUrl ? "bg-cover bg-center" : "bg-card"
         )}
-        style={board.backgroundImageUrl ? { backgroundImage: `url(${board.backgroundImageUrl})` } : undefined}
+        style={board.backgroundImageUrl ? { backgroundImage: `url("${board.backgroundImageUrl}")` } : undefined}
       >
         {/* Overlay for background images */}
         {board.backgroundImageUrl && (
