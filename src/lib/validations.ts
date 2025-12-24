@@ -86,6 +86,7 @@ export const updateCardSchema = z.object({
   description: z.string().max(50000, 'Descrição muito longa').nullable().optional(),
   dueAt: z.string().datetime().nullable().optional(),
   isCompleted: z.boolean().optional(),
+  isTemplate: z.boolean().optional(),
   archivedAt: z.string().datetime().nullable().optional(),
   coverType: z.enum(['none', 'color', 'image']).optional(),
   coverColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Cor inválida').nullable().optional(),

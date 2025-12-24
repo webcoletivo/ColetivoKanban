@@ -126,6 +126,8 @@ export async function GET(
       coverColor: (card as any).coverColor,
       coverImageUrl: (card as any).coverImageUrl,
       coverSize: (card as any).coverSize,
+      isTemplate: (card as any).isTemplate || false,
+      templateSourceCardId: (card as any).templateSourceCardId || null,
     })
   } catch (error) {
     console.error('Get card error:', error)
@@ -149,7 +151,7 @@ export async function PATCH(
 
     const card = await (prisma.card as any).findUnique({
       where: { id: cardId },
-      select: { boardId: true, title: true, dueAt: true, isCompleted: true, archivedAt: true },
+      select: { boardId: true, title: true, dueAt: true, isCompleted: true, archivedAt: true, isTemplate: true },
     })
 
     if (!card) {
@@ -226,6 +228,15 @@ export async function PATCH(
     if (data.coverImageUrl !== undefined) updateData.coverImageUrl = data.coverImageUrl
     if (data.coverSize !== undefined) updateData.coverSize = data.coverSize
 
+    // Handle isTemplate toggle
+    if (data.isTemplate !== undefined && data.isTemplate !== card.isTemplate) {
+      updateData.isTemplate = data.isTemplate
+      activities.push({
+        type: data.isTemplate ? 'CARD_MARKED_AS_TEMPLATE' : 'CARD_UNMARKED_AS_TEMPLATE',
+        payload: {},
+      })
+    }
+
 
     const updated = await prisma.$transaction(async (tx) => {
       const updatedCard = await (tx.card as any).update({
@@ -255,6 +266,7 @@ export async function PATCH(
       dueAt: updated.dueAt,
       archivedAt: updated.archivedAt,
       isCompleted: updated.isCompleted,
+      isTemplate: (updated as any).isTemplate || false,
       coverType: (updated as any).coverType,
       coverColor: (updated as any).coverColor,
       coverImageUrl: (updated as any).coverImageUrl,

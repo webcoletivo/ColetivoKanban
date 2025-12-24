@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Clock, MessageSquare, Paperclip, CheckSquare, Circle, CheckCircle2, Check } from 'lucide-react'
+import { Clock, MessageSquare, Paperclip, CheckSquare, Circle, CheckCircle2, Check, LayoutTemplate } from 'lucide-react'
 import { cn, formatDate, isOverdue, isDueToday } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 
@@ -25,6 +25,7 @@ interface CardPreviewProps {
     coverColor?: string | null
     coverImageUrl?: string | null
     coverSize?: string | null
+    isTemplate?: boolean
   }
   onClick?: () => void
   onContextMenu?: (e: React.MouseEvent, cardId: string, cardRect: DOMRect) => void
@@ -280,6 +281,16 @@ export function CardPreview({
             )}>
               {card.title}
             </p>
+
+            {/* Template Badge */}
+            {card.isTemplate && (
+              <div className="flex items-center gap-1.5 mt-1.5 mb-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
+                  <LayoutTemplate className="h-3 w-3" />
+                  Este cartão é um template.
+                </span>
+              </div>
+            )}
 
             {/* Badges */}
             {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0) && (

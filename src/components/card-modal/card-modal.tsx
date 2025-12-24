@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   X, Calendar, Tag, CheckSquare, Paperclip, MessageSquare, 
   Clock, MoreHorizontal, Trash2, Archive, Check, Plus, Image as ImageIcon,
-  ArrowRight, Copy
+  ArrowRight, Copy, LayoutTemplate
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
@@ -22,6 +22,7 @@ import { CardActivities } from './card-activities'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { CardCoverPopover } from './card-cover-popover'
 import { CardActionModal } from '@/components/board/card-action-modal'
+import { CreateFromTemplateModal } from './create-from-template-modal'
 import { useMutation as useReactMutation } from '@tanstack/react-query'
 
 
@@ -80,6 +81,7 @@ interface CardData {
   coverColor: string | null
   coverImageUrl: string | null
   coverSize: string | null
+  isTemplate: boolean
 }
 
 async function fetchCard(cardId: string): Promise<CardData> {
@@ -99,6 +101,7 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
   const [coverAnchor, setCoverAnchor] = React.useState<DOMRect | null>(null)
   const [moreActionsAnchor, setMoreActionsAnchor] = React.useState<DOMRect | null>(null)
   const [actionModalType, setActionModalType] = React.useState<'move' | 'copy' | null>(null)
+  const [showCreateFromTemplate, setShowCreateFromTemplate] = React.useState(false)
 
 
   const { data: card, isLoading } = useQuery({
@@ -352,8 +355,30 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
       {/* Modal */}
       {/* Modal - Fixed Dimensions: 1080px x 700px on Desktop */}
       <div className="relative w-full md:w-[1080px] h-full md:h-[700px] bg-background rounded-xl shadow-2xl mx-4 animate-in fade-in-0 zoom-in-95 border border-border flex flex-col overflow-hidden">
+        
+        {/* Template Banner */}
+        {card.isTemplate && (
+          <div className="w-full bg-blue-600 text-white px-4 py-3 flex items-center justify-between shrink-0 z-30 relative">
+            <div className="flex items-center gap-2">
+              <LayoutTemplate className="h-5 w-5" />
+              <span className="font-semibold text-sm">Este é um template de cartão.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="font-medium shadow-sm border-0"
+              onClick={() => setShowCreateFromTemplate(true)}
+            >
+              Criar cartão com base em template
+            </Button>
+          </div>
+        )}
+
         {/* Header Actions Area (Icons at Top Right) */}
-        <div className="absolute right-4 top-4 flex items-center gap-1 z-20">
+        <div className={cn(
+          "absolute right-4 flex items-center gap-1 z-20 transition-all duration-200",
+          card.isTemplate ? "top-16" : "top-4"
+        )}>
           {/* Cover Icon */}
           <button
             onClick={(e) => setCoverAnchor(e.currentTarget.getBoundingClientRect())}
@@ -376,9 +401,14 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
             {moreActionsAnchor && (
               <CardActionsMenuPopover
                 anchorRect={moreActionsAnchor}
+                isTemplate={card.isTemplate}
                 onClose={() => setMoreActionsAnchor(null)}
                 onAction={(type) => {
-                   setActionModalType(type as 'move' | 'copy')
+                   if (type === 'toggle-template') {
+                     updateCardMutation.mutate({ isTemplate: !card.isTemplate })
+                   } else {
+                     setActionModalType(type as 'move' | 'copy')
+                   }
                    setMoreActionsAnchor(null)
                 }}
               />
@@ -655,6 +685,18 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
         />
       )}
 
+      {/* Create From Template Modal */}
+      {showCreateFromTemplate && (
+        <CreateFromTemplateModal
+          isOpen={showCreateFromTemplate}
+          onClose={() => setShowCreateFromTemplate(false)}
+          cardId={cardId}
+          boardId={boardId}
+          currentColumnId={card.column.id}
+          templateTitle={card.title}
+        />
+      )}
+
       {/* Move the popover back here if needed for z-index or just keep it anchored */}
       <CardCoverPopover
         isOpen={!!coverAnchor}
@@ -773,10 +815,12 @@ function CardActionsMenuPopover({
   anchorRect,
   onClose,
   onAction,
+  isTemplate,
 }: {
   anchorRect: DOMRect
   onClose: () => void
-  onAction: (type: 'move' | 'copy') => void
+  onAction: (type: 'move' | 'copy' | 'toggle-template') => void
+  isTemplate: boolean
 }) {
   const popoverRef = React.useRef<HTMLDivElement>(null)
   const [position, setPosition] = React.useState({ top: 0, left: 0 })
@@ -827,6 +871,17 @@ function CardActionsMenuPopover({
           >
             <Copy className="h-4 w-4 text-muted-foreground" />
             Copiar
+          </button>
+          
+          <div className="h-px bg-border/40 my-1" />
+
+          <button
+            onClick={() => onAction('toggle-template')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/50 rounded-md transition-colors text-left text-foreground"
+          >
+            <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
+            <span className="flex-1">Transformar em template</span>
+            {isTemplate && <Check className="h-4 w-4 ml-auto text-primary" />}
           </button>
         </div>
       </div>

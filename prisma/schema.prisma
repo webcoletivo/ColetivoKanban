@@ -130,6 +130,8 @@ model Card {
   description String?   @db.Text
   dueAt       DateTime?
   isCompleted Boolean   @default(false)
+  isTemplate  Boolean   @default(false)
+  templateSourceCardId String?
   position    Float
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -301,6 +303,9 @@ enum ActivityType {
   COMMENT_ADDED
   COMMENT_EDITED
   COMMENT_DELETED
+  CARD_MARKED_AS_TEMPLATE
+  CARD_UNMARKED_AS_TEMPLATE
+  CARD_CREATED_FROM_TEMPLATE
 }
 
 // ==========================================
