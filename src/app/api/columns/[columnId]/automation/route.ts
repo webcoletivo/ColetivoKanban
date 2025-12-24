@@ -10,6 +10,7 @@ const createAutomationSchema = z.discriminatedUnion('type', [
     payload: z.object({
       targetColumnId: z.string().uuid(),
       targetBoardId: z.string().uuid().optional(),
+      destinationPosition: z.enum(['first', 'last']).default('last'),
     })
   }),
   z.object({
@@ -17,6 +18,7 @@ const createAutomationSchema = z.discriminatedUnion('type', [
     payload: z.object({
       targetColumnId: z.string().uuid(),
       targetBoardId: z.string().uuid().optional(),
+      destinationPosition: z.enum(['first', 'last']).default('last'),
     })
   }),
   z.object({
@@ -81,6 +83,47 @@ export async function POST(
 
     return NextResponse.json(automation)
 
+  } catch (error) {
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+  }
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ columnId: string }> }
+) {
+  try {
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: '401' }, { status: 401 })
+
+    const body = await req.json()
+    const { id, type, payload } = body
+
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
+
+    const automation = await prisma.columnAutomation.findUnique({
+      where: { id },
+      include: { column: true }
+    })
+
+    if (!automation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const hasPermission = await checkBoardPermission(
+      automation.column.boardId,
+      session.user.id,
+      'edit_column'
+    )
+    if (!hasPermission) return NextResponse.json({ error: '403' }, { status: 403 })
+
+    const updated = await prisma.columnAutomation.update({
+      where: { id },
+      data: {
+        type: type || automation.type,
+        payload: payload ? { ...(automation.payload as any), ...payload } : automation.payload
+      }
+    })
+
+    return NextResponse.json(updated)
   } catch (error) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
   }

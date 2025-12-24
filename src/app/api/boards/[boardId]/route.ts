@@ -222,7 +222,7 @@ export async function DELETE(
       })
     })
 
-    return NextResponse.json(null, { status: 204 })
+    return new Response(null, { status: 204 })
   } catch (error) {
     console.error('Delete board error:', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Erro desconhecido' }, { status: 500 })

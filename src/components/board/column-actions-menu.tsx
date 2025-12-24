@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { MoreHorizontal, ChevronRight, ArrowLeft, Plus, Trash2, X, Check, Copy, ArrowRight as ArrowRightIcon, Tag } from 'lucide-react'
+import { MoreHorizontal, ChevronRight, ArrowLeft, Plus, Trash2, X, Check, Copy, ArrowRight as ArrowRightIcon, Tag, Pencil } from 'lucide-react'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/toast'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -28,6 +28,7 @@ export function ColumnActionsMenu({ columnId, boardId, onRename }: ColumnActions
   const [showAutoMoveModal, setShowAutoMoveModal] = React.useState(false)
   const [showAutoCopyModal, setShowAutoCopyModal] = React.useState(false)
   const [showAutoLabelModal, setShowAutoLabelModal] = React.useState(false)
+  const [editingAutomation, setEditingAutomation] = React.useState<any>(null)
   
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -41,7 +42,7 @@ export function ColumnActionsMenu({ columnId, boardId, onRename }: ColumnActions
           if (!res.ok) throw new Error('Erro ao carregar automações')
           return res.json()
       },
-      enabled: isOpen && view === 'automation'
+      enabled: Boolean(isOpen && view === 'automation')
   })
 
   const deleteAutomationMutation = useMutation({
@@ -190,12 +191,25 @@ export function ColumnActionsMenu({ columnId, boardId, onRename }: ColumnActions
                       {a.type === 'COPY_TO_COLUMN' && <Copy className="h-3 w-3 text-green-500" />}
                       <span className="truncate max-w-[140px]">{getDesc(a)}</span>
                   </div>
-                  <button 
-                    onClick={() => deleteAutomationMutation.mutate(a.id)}
-                    className="text-muted-foreground hover:text-red-500 p-1"
-                  >
-                      <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                   <div className="flex items-center gap-1">
+                       <button 
+                         onClick={() => {
+                             setEditingAutomation(a)
+                             if (a.type === 'ADD_LABEL') setShowAutoLabelModal(true)
+                             else setShowAutoMoveModal(true) // Both move and copy use same modal
+                             setIsOpen(false)
+                         }}
+                         className="text-muted-foreground hover:text-primary p-1"
+                       >
+                           <Pencil className="h-3.5 w-3.5" />
+                       </button>
+                       <button 
+                         onClick={() => deleteAutomationMutation.mutate(a.id)}
+                         className="text-muted-foreground hover:text-red-500 p-1"
+                       >
+                           <Trash2 className="h-3.5 w-3.5" />
+                       </button>
+                   </div>
               </div>
           ))}
           {automations.length === 0 && (
@@ -272,24 +286,19 @@ export function ColumnActionsMenu({ columnId, boardId, onRename }: ColumnActions
 
       {/* --- Automation Modals --- */}
       <AutomationMoveCopyModal
-         isOpen={showAutoMoveModal}
-         onClose={() => setShowAutoMoveModal(false)}
+         isOpen={showAutoMoveModal || (editingAutomation && (editingAutomation.type === 'MOVE_TO_COLUMN' || editingAutomation.type === 'COPY_TO_COLUMN'))}
+         onClose={() => { setShowAutoMoveModal(false); setShowAutoCopyModal(false); setEditingAutomation(null) }}
          columnId={columnId}
          boardId={boardId}
-         type="MOVE_TO_COLUMN"
-      />
-      <AutomationMoveCopyModal
-         isOpen={showAutoCopyModal}
-         onClose={() => setShowAutoCopyModal(false)}
-         columnId={columnId}
-         boardId={boardId}
-         type="COPY_TO_COLUMN"
+         type={editingAutomation?.type || (showAutoMoveModal ? 'MOVE_TO_COLUMN' : 'COPY_TO_COLUMN')}
+         initialData={editingAutomation}
       />
       <AutomationLabelModal
          isOpen={showAutoLabelModal}
-         onClose={() => setShowAutoLabelModal(false)}
+         onClose={() => { setShowAutoLabelModal(false); setEditingAutomation(null) }}
          columnId={columnId}
          boardId={boardId}
+         initialData={editingAutomation}
       />
     </div>
   )
@@ -303,7 +312,7 @@ function MoveAllCardsModal({ isOpen, onClose, columnId, boardId }: { isOpen: boo
     const { data: board } = useQuery({
         queryKey: ['board-summary', boardId],
         queryFn: async () => (await fetch(`/api/boards/${boardId}`)).json(),
-        enabled: isOpen
+        enabled: Boolean(isOpen)
     })
 
     const columns = board?.columns || []
@@ -373,14 +382,14 @@ function MoveListModal({ isOpen, onClose, columnId, currentBoardId }: { isOpen: 
     const { data: boards } = useQuery({
         queryKey: ['user-boards'],
         queryFn: async () => (await fetch('/api/boards')).json(),
-        enabled: isOpen
+        enabled: Boolean(isOpen)
     })
 
     // Fetch target board details to know column count
     const { data: targetBoard } = useQuery({
         queryKey: ['board-summary', targetBoardId],
         queryFn: async () => (await fetch(`/api/boards/${targetBoardId}`)).json(),
-        enabled: isOpen && !!targetBoardId
+        enabled: Boolean(isOpen && targetBoardId)
     })
 
     // Determine max position
@@ -446,45 +455,60 @@ function MoveListModal({ isOpen, onClose, columnId, currentBoardId }: { isOpen: 
 }
 
 function AutomationMoveCopyModal({ 
-    isOpen, onClose, columnId, boardId, type 
+    isOpen, onClose, columnId, boardId, type, initialData 
 }: { 
-    isOpen: boolean, onClose: () => void, columnId: string, boardId: string, type: 'MOVE_TO_COLUMN' | 'COPY_TO_COLUMN' 
+    isOpen: boolean, onClose: () => void, columnId: string, boardId: string, type: 'MOVE_TO_COLUMN' | 'COPY_TO_COLUMN', initialData?: any 
 }) {
     const { addToast } = useToast()
     const queryClient = useQueryClient()
     const [targetBoardId, setTargetBoardId] = React.useState(boardId)
     const [targetColumnId, setTargetColumnId] = React.useState('')
+    const [destinationPosition, setDestinationPosition] = React.useState<'first' | 'last'>('last')
+
+    // Pre-fill if editing
+    React.useEffect(() => {
+        if (initialData && isOpen) {
+            setTargetBoardId(initialData.payload.targetBoardId || boardId)
+            setTargetColumnId(initialData.payload.targetColumnId)
+            setDestinationPosition(initialData.payload.destinationPosition || 'last')
+        } else if (isOpen) {
+            setTargetBoardId(boardId)
+            setDestinationPosition('last')
+        }
+    }, [initialData, isOpen, boardId])
 
     // Fetch user boards
     const { data: boards } = useQuery({
         queryKey: ['user-boards'],
         queryFn: async () => (await fetch('/api/boards')).json(),
-        enabled: isOpen
+        enabled: Boolean(isOpen)
     })
 
     // Fetch target board details to get columns
     const { data: targetBoard } = useQuery({
         queryKey: ['board-summary-auto', targetBoardId],
         queryFn: async () => (await fetch(`/api/boards/${targetBoardId}`)).json(),
-        enabled: isOpen && !!targetBoardId
+        enabled: Boolean(isOpen && targetBoardId)
     })
 
     const columns = targetBoard?.columns || []
     
     React.useEffect(() => {
-        if (columns.length > 0) {
+        if (columns.length > 0 && !initialData) {
             setTargetColumnId(columns[0].id)
         }
-    }, [columns])
+    }, [columns, initialData])
 
     const mutation = useMutation({
         mutationFn: async () => {
+             const method = initialData ? 'PATCH' : 'POST'
              const res = await fetch(`/api/columns/${columnId}/automation`, {
-                method: 'POST',
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    id: initialData?.id,
                     type,
-                    payload: { targetColumnId, targetBoardId }
+                    payload: { targetColumnId, targetBoardId, destinationPosition }
                 })
             })
             if (!res.ok) {
@@ -494,84 +518,112 @@ function AutomationMoveCopyModal({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['column-automations', columnId] })
-            addToast('success', 'Automação criada')
+            addToast('success', initialData ? 'Automação atualizada' : 'Automação criada')
             onClose()
         },
-        onError: (err) => addToast('error', err.message || 'Erro ao salvar automação')
+        onError: (err) => addToast('error', (err as Error).message || 'Erro ao salvar automação')
     })
     
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
-            <ModalHeader onClose={onClose}>{type === 'MOVE_TO_COLUMN' ? 'Automação: Mover Cartão' : 'Automação: Copiar Cartão'}</ModalHeader>
+            <ModalHeader onClose={onClose}>
+                {initialData ? 'Editar Automação' : (type === 'MOVE_TO_COLUMN' ? 'Automação: Mover Cartão' : 'Automação: Copiar Cartão')}
+            </ModalHeader>
             <ModalContent>
                  <div className="space-y-4">
                     <div className="text-sm text-muted-foreground">
                         Sempre que um cartão entrar nesta lista, ele será {type === 'MOVE_TO_COLUMN' ? 'movido' : 'copiado'} para:
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Para o Quadro</label>
-                        <select 
-                           className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm"
-                           value={targetBoardId}
-                           onChange={e => setTargetBoardId(e.target.value)}
-                        >
-                           {boards?.map((b: any) => (
-                               <option key={b.id} value={b.id}>{b.name}</option>
-                           ))}
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Quadro</label>
+                            <select 
+                            className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm"
+                            value={targetBoardId}
+                            onChange={e => setTargetBoardId(e.target.value)}
+                            >
+                            {boards?.map((b: any) => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground">Coluna</label>
+                            <select 
+                            className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm"
+                            value={targetColumnId}
+                            onChange={e => setTargetColumnId(e.target.value)}
+                            >
+                            {columns.map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
+                            </select>
+                        </div>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Para a Coluna</label>
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Posição no destino</label>
                         <select 
                            className="w-full bg-secondary/50 border border-border rounded-md px-3 py-2 text-sm"
-                           value={targetColumnId}
-                           onChange={e => setTargetColumnId(e.target.value)}
+                           value={destinationPosition}
+                           onChange={e => setDestinationPosition(e.target.value as 'first' | 'last')}
                         >
-                           {columns.map((c: any) => (
-                               <option key={c.id} value={c.id}>{c.title}</option>
-                           ))}
+                           <option value="first">Primeiro (topo da coluna)</option>
+                           <option value="last">Último (final da coluna)</option>
                         </select>
                     </div>
                 </div>
             </ModalContent>
             <ModalFooter>
                 <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-                <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending}>Criar regra</Button>
+                <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending}>
+                    {initialData ? 'Salvar alterações' : 'Criar regra'}
+                </Button>
             </ModalFooter>
         </Modal>
     )
 }
 
 function AutomationLabelModal({ 
-    isOpen, onClose, columnId, boardId
+    isOpen, onClose, columnId, boardId, initialData
 }: { 
-    isOpen: boolean, onClose: () => void, columnId: string, boardId: string
+    isOpen: boolean, onClose: () => void, columnId: string, boardId: string, initialData?: any
 }) {
     const { addToast } = useToast()
     const queryClient = useQueryClient()
     const [selectedLabelId, setSelectedLabelId] = React.useState('')
 
+    // Pre-fill if editing
+    React.useEffect(() => {
+        if (initialData && isOpen) {
+            setSelectedLabelId(initialData.payload.labelId)
+        } else if (isOpen) {
+            setSelectedLabelId('')
+        }
+    }, [initialData, isOpen])
+
     // Fetch board details to get labels
     const { data: board } = useQuery({
         queryKey: ['board-summary-labels', boardId],
         queryFn: async () => (await fetch(`/api/boards/${boardId}`)).json(),
-        enabled: isOpen
+        enabled: Boolean(isOpen)
     })
 
     const labels = board?.labels || []
     
     React.useEffect(() => {
-        if (labels.length > 0 && !selectedLabelId) {
+        if (labels.length > 0 && !selectedLabelId && !initialData) {
             setSelectedLabelId(labels[0].id)
         }
-    }, [labels, selectedLabelId])
+    }, [labels, selectedLabelId, initialData])
 
     const mutation = useMutation({
         mutationFn: async () => {
+             const method = initialData ? 'PATCH' : 'POST'
              const res = await fetch(`/api/columns/${columnId}/automation`, {
-                method: 'POST',
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    id: initialData?.id,
                     type: 'ADD_LABEL',
                     payload: { labelId: selectedLabelId }
                 })
@@ -583,15 +635,15 @@ function AutomationLabelModal({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['column-automations', columnId] })
-            addToast('success', 'Automação criada')
+            addToast('success', initialData ? 'Automação atualizada' : 'Automação criada')
             onClose()
         },
-        onError: (err) => addToast('error', err.message)
+        onError: (err) => addToast('error', (err as Error).message)
     })
     
     return (
         <Modal isOpen={isOpen} onClose={onClose} size="sm">
-            <ModalHeader onClose={onClose}>Automação: Adicionar Etiqueta</ModalHeader>
+            <ModalHeader onClose={onClose}>{initialData ? 'Editar Automação' : 'Automação: Adicionar Etiqueta'}</ModalHeader>
             <ModalContent>
                  <div className="space-y-4">
                     <div className="text-sm text-muted-foreground">

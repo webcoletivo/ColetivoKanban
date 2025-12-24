@@ -368,39 +368,45 @@ export default function BoardPage() {
 
   // Custom collision detection strategy
   const collisionDetectionStrategy = React.useCallback((args: any) => {
+    const { active, droppableContainers, pointerCoordinates } = args
+    if (!pointerCoordinates) return []
+
     // Determine active drag type
-    const activeType = args.active.data.current?.type
+    const activeType = active.data.current?.type
 
     if (activeType === 'column') {
-      // First, try to detect column collisions directly
       const pointerCollisions = closestCorners(args)
-      
       if (pointerCollisions.length > 0) {
         const firstCollision = pointerCollisions[0]
-        
-        // If we hit a column directly, perfect
         if (firstCollision.data?.droppableContainer?.data?.current?.type === 'column') {
           return pointerCollisions
         }
-
-        // If we hit a card, we want to map it to its column
         if (firstCollision.data?.droppableContainer?.data?.current?.type === 'card') {
           const cardColumnId = firstCollision.data?.droppableContainer?.data?.current?.columnId
           if (cardColumnId) {
-            // Find the column container
-            const columnContainer = args.droppableContainers.find((c: any) => c.id === cardColumnId)
+            const columnContainer = droppableContainers.find((c: any) => c.id === cardColumnId)
             if (columnContainer) {
-              return [{
-                id: columnContainer.id,
-                data: columnContainer.data,
-              }]
+              return [{ id: columnContainer.id, data: columnContainer.data }]
             }
           }
         }
       }
+      return pointerCollisions
     }
 
-    // Default behavior for other items
+    // For cards, we want to find the column under the cursor first
+    // especially if the column is empty
+    const pointerCollisions = closestCorners(args)
+    if (pointerCollisions.length > 0) {
+      const firstCollision = pointerCollisions[0]
+      
+      // If we are over a column, or over a card in a column
+      if (firstCollision.data?.droppableContainer?.data?.current?.type === 'column' || 
+          firstCollision.data?.droppableContainer?.data?.current?.type === 'card') {
+        return pointerCollisions
+      }
+    }
+
     return closestCorners(args)
   }, [])
 

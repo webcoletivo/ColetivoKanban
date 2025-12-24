@@ -1,8 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { useSortable } from '@dnd-kit/sortable'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
+import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { GripVertical } from 'lucide-react'
@@ -72,6 +72,14 @@ export function Column({
   } = useSortable({
     id: column.id,
     data: { type: 'column', column },
+  })
+
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: column.id,
+    data: {
+      type: 'column',
+      column,
+    },
   })
 
   const style = {
@@ -206,7 +214,13 @@ export function Column({
       </div>
 
       {/* Cards Container */}
-      <div className="flex-1 overflow-y-auto p-2 pt-0 space-y-2">
+      <div 
+        ref={setDroppableRef}
+        className={cn(
+          "flex-1 overflow-y-auto p-2 pt-0 space-y-2 translate-z-0",
+          column.cards.length === 0 && "min-h-[150px]"
+        )}
+      >
         <SortableContext
           items={column.cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
@@ -226,6 +240,12 @@ export function Column({
             />
           ))}
         </SortableContext>
+
+        {column.cards.length === 0 && !isAddingCard && (
+           <div className="h-full min-h-[100px] rounded-lg border-2 border-dashed border-border/20 flex items-center justify-center text-muted-foreground/0 group-hover:text-muted-foreground/20 transition-colors pointer-events-none">
+              Solte aqui
+           </div>
+        )}
 
         {/* Add Card Form/Button */}
         {isAddingCard ? (

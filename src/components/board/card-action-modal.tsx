@@ -42,7 +42,7 @@ export function CardActionModal({
       if (!res.ok) throw new Error('Erro ao carregar quadros')
       return res.json()
     },
-    enabled: isOpen
+    enabled: Boolean(isOpen)
   })
 
   // Fetch columns for the selected board
@@ -53,7 +53,7 @@ export function CardActionModal({
       if (!res.ok) throw new Error('Erro ao carregar colunas')
       return res.json()
     },
-    enabled: isOpen && !!selectedBoardId
+    enabled: Boolean(isOpen && selectedBoardId)
   })
 
   const columns = boardData?.columns || []

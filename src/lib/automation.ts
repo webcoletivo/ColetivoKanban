@@ -22,7 +22,6 @@ export async function checkAndExecuteAutomations(
     try {
       if (automation.type === 'ADD_LABEL') {
         const payload = automation.payload as { labelId: string }
-        // Check if label exists on card to avoid duplicates
         const exists = await prisma.cardLabel.findUnique({
           where: {
             cardId_labelId: {
@@ -37,35 +36,42 @@ export async function checkAndExecuteAutomations(
           })
         }
       } else if (automation.type === 'MOVE_TO_COLUMN') {
-         const payload = automation.payload as { targetColumnId: string; targetBoardId?: string }
+         const payload = automation.payload as { targetColumnId: string; targetBoardId?: string, destinationPosition?: 'first' | 'last' }
          
-         // Fetch last position
-         const lastCard = await prisma.card.findFirst({
-            where: { columnId: payload.targetColumnId },
-            orderBy: { position: 'desc' }
-         })
-         const newPos = (lastCard?.position || 0) + 65536
+         let newPos = 65536
+         if (payload.destinationPosition === 'first') {
+            const firstCard = await prisma.card.findFirst({
+                where: { columnId: payload.targetColumnId },
+                orderBy: { position: 'asc' }
+            })
+            if (firstCard) {
+                newPos = firstCard.position / 2
+            }
+         } else {
+            const lastCard = await prisma.card.findFirst({
+               where: { columnId: payload.targetColumnId },
+               orderBy: { position: 'desc' }
+            })
+            if (lastCard) {
+                newPos = lastCard.position + 65536
+            }
+         }
          
          await prisma.card.update({
              where: { id: cardId },
              data: {
                  columnId: payload.targetColumnId,
-                 boardId: payload.targetBoardId, // Optional update if cross-board
+                 boardId: payload.targetBoardId,
                  position: newPos
              }
          })
          
-         // Recursive check for the NEW column
          await checkAndExecuteAutomations(cardId, payload.targetColumnId, depth + 1)
-         
-         // If we moved, we should stop processing other automations for the OLD column?
-         // Usually yes, because the card is gone.
          break; 
 
       } else if (automation.type === 'COPY_TO_COLUMN') {
-          const payload = automation.payload as { targetColumnId: string; targetBoardId?: string }
+          const payload = automation.payload as { targetColumnId: string; targetBoardId?: string, destinationPosition?: 'first' | 'last' }
           
-          // Get original card
           const originalCard = await prisma.card.findUnique({
               where: { id: cardId },
               include: { labels: true } 
@@ -73,14 +79,25 @@ export async function checkAndExecuteAutomations(
           
           if (!originalCard) continue
 
-          // Fetch last position in target
-          const lastCard = await prisma.card.findFirst({
-            where: { columnId: payload.targetColumnId },
-            orderBy: { position: 'desc' }
-          })
-          const newPos = (lastCard?.position || 0) + 65536
+          let newPos = 65536
+          if (payload.destinationPosition === 'first') {
+              const firstCard = await prisma.card.findFirst({
+                  where: { columnId: payload.targetColumnId },
+                  orderBy: { position: 'asc' }
+              })
+              if (firstCard) {
+                  newPos = firstCard.position / 2
+              }
+          } else {
+              const lastCard = await prisma.card.findFirst({
+                where: { columnId: payload.targetColumnId },
+                orderBy: { position: 'desc' }
+              })
+              if (lastCard) {
+                  newPos = lastCard.position + 65536
+              }
+          }
 
-          // Create copy
           const source = originalCard as any
           const newCard = await prisma.card.create({
              data: {
@@ -99,14 +116,12 @@ export async function checkAndExecuteAutomations(
              }
           })
           
-          // Copy labels
           if (originalCard.labels.length > 0) {
              await prisma.cardLabel.createMany({
                  data: originalCard.labels.map(l => ({ cardId: newCard.id, labelId: l.labelId }))
              })
           }
 
-          // Trigger automation for the NEW card in the NEW column
           await checkAndExecuteAutomations(newCard.id, payload.targetColumnId, depth + 1)
       }
     } catch (error) {

@@ -39,8 +39,14 @@ function getColorFromName(name: string): string {
 
 export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
+  const [mounted, setMounted] = React.useState(false)
   
-  const showImage = src && !imageError
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Always show fallback on server and initial client render to avoid hydration mismatch
+  const showImage = mounted && src && !imageError
   const initials = getInitials(name)
   const bgColor = getColorFromName(name)
 
