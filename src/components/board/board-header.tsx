@@ -402,9 +402,18 @@ function MembersModal({
       }
       return res.json()
     },
-    onSuccess: () => {
-      addToast('success', 'Convite enviado!')
+    onSuccess: (data) => {
+      if (data.emailSent === false) {
+        addToast('warning', data.message)
+      } else {
+        addToast('success', data.message || 'Convite enviado!')
+      }
       setEmail('')
+      
+      // If the user was added directly (existing user), refresh board data
+      if (data.added) {
+        queryClient.invalidateQueries({ queryKey: ['board', board.id] })
+      }
     },
     onError: (error: Error) => {
       addToast('error', error.message)

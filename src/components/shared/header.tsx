@@ -55,7 +55,7 @@ export function DashboardHeader({ user: initialUser }: HeaderProps) {
               )}
             >
               <Home className="h-4 w-4 inline mr-2" />
-              Meus Boards
+              Meus Quadros
             </Link>
           </nav>
 

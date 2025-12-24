@@ -34,12 +34,25 @@ export async function DELETE(
       throw error
     }
 
-    // In production, delete from S3 here
+    // Physical deletion logic
+    const path = await import('path')
+    const { unlink } = await import('fs/promises')
+    const { existsSync } = await import('fs')
+    
+    const filePath = path.join(process.cwd(), 'public', 'uploads', attachment.storageKey)
+    
+    if (existsSync(filePath)) {
+      try {
+        await unlink(filePath)
+      } catch (unlinkError) {
+        console.error('Error deleting physical file:', unlinkError)
+        // We continue anyway to remove the database record
+      }
+    }
 
     await prisma.$transaction([
-      prisma.attachment.update({
+      prisma.attachment.delete({
         where: { id: attachmentId },
-        data: { deletedAt: new Date() },
       }),
       prisma.cardActivity.create({
         data: {
@@ -51,7 +64,7 @@ export async function DELETE(
       }),
     ])
 
-    return NextResponse.json({ message: 'Anexo removido' })
+    return NextResponse.json({ message: 'Anexo removido e arquivo excluído' })
   } catch (error) {
     console.error('Delete attachment error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

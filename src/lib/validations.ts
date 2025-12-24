@@ -10,6 +10,7 @@ export const signupSchema = z.object({
     .regex(/[a-zA-Z]/, 'Senha deve conter pelo menos 1 letra')
     .regex(/[0-9]/, 'Senha deve conter pelo menos 1 número'),
   confirmPassword: z.string(),
+  invite: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não conferem',
   path: ['confirmPassword'],

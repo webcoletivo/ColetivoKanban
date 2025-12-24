@@ -311,6 +311,7 @@ model Invitation {
   id        String           @id @default(uuid())
   email     String
   tokenHash String           @unique
+  role      Role             @default(USER)
   status    InvitationStatus @default(PENDING)
   expiresAt DateTime
   createdAt DateTime         @default(now())

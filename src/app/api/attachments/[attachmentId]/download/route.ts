@@ -41,6 +41,10 @@ export async function GET(
       throw error
     }
 
+    // Check for inline mode (for previews/pdfs)
+    const { searchParams } = new URL(request.url)
+    const isInline = searchParams.get('inline') === 'true'
+
     // Serve local file
     const filePath = path.join(process.cwd(), 'public', 'uploads', attachment.storageKey)
     
@@ -48,13 +52,37 @@ export async function GET(
         return NextResponse.json({ error: 'Arquivo físico não encontrado' }, { status: 404 })
     }
 
-    const fileBuffer = await readFile(filePath)
+    // Optimization: Stream the file instead of reading entire buffer into memory
+    const { createReadStream } = await import('fs')
+    const fileStream = createReadStream(filePath)
 
-    return new NextResponse(fileBuffer, {
+    // Convert ReadStream to ReadableStream for Next.js NextResponse
+    const readableStream = new ReadableStream({
+      start(controller) {
+        fileStream.on('data', (chunk) => controller.enqueue(chunk))
+        fileStream.on('end', () => controller.close())
+        fileStream.on('error', (err) => controller.error(err))
+      },
+      cancel() {
+        fileStream.destroy()
+      },
+    })
+
+    // Map QuickTime to video/mp4 where possible for better browser support (or keep quicktime)
+    // Most browsers prefer video/mp4 even for some .mov containers
+    let contentType = attachment.mimeType
+    if (attachment.fileName.endsWith('.mov') && contentType === 'application/octet-stream') {
+        contentType = 'video/quicktime'
+    }
+
+    const disposition = isInline ? 'inline' : 'attachment'
+
+    return new NextResponse(readableStream, {
       headers: {
-        'Content-Type': attachment.mimeType,
+        'Content-Type': contentType,
         'Content-Length': attachment.fileSize.toString(),
-        'Content-Disposition': `attachment; filename="${attachment.fileName}"`,
+        'Content-Disposition': `${disposition}; filename="${encodeURIComponent(attachment.fileName)}"`,
+        'Cache-Control': 'private, max-age=3600',
       },
     })
   } catch (error) {

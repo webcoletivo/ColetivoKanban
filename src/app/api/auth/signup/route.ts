@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { signupSchema } from '@/lib/validations'
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { name, email, password } = result.data
+    const { name, email, password, invite: inviteToken } = result.data
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -42,33 +43,78 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Check for pending invitations for this email
-    const pendingInvitations = await prisma.invitation.findMany({
+    // 1. Handle specific token if provided
+    let tokenInvitationBoardId: string | null = null
+    if (inviteToken) {
+      const tokenHash = crypto.createHash('sha256').update(inviteToken).digest('hex')
+      const invitation = await prisma.invitation.findUnique({
+        where: { tokenHash },
+      })
+
+      if (invitation && invitation.status === 'PENDING' && invitation.expiresAt > new Date()) {
+        tokenInvitationBoardId = invitation.boardId
+        await prisma.$transaction([
+          prisma.boardMember.upsert({
+            where: {
+              boardId_userId: {
+                boardId: invitation.boardId,
+                userId: user.id
+              }
+            },
+            create: {
+              boardId: invitation.boardId,
+              userId: user.id,
+              role: invitation.role,
+            },
+            update: {} // Already a member, do nothing
+          }),
+          prisma.invitation.update({
+            where: { id: invitation.id },
+            data: {
+              status: 'ACCEPTED',
+              acceptedById: user.id,
+            },
+          }),
+        ])
+      }
+    }
+
+    // 2. Also check for any other pending invitations matching the exact email (auto-accept)
+    const otherInvitations = await prisma.invitation.findMany({
       where: {
         email: email.toLowerCase(),
         status: 'PENDING',
         expiresAt: { gt: new Date() },
+        boardId: tokenInvitationBoardId ? { not: tokenInvitationBoardId } : undefined
       },
     })
 
-    // Accept all pending invitations
-    for (const invitation of pendingInvitations) {
-      await prisma.$transaction([
-        prisma.boardMember.create({
-          data: {
-            boardId: invitation.boardId,
-            userId: user.id,
-            role: 'USER' as any, // Cast to match Enum if necessary
-          },
-        }),
-        prisma.invitation.update({
-          where: { id: invitation.id },
-          data: {
-            status: 'ACCEPTED',
-            acceptedById: user.id,
-          },
-        }),
-      ])
+    if (otherInvitations.length > 0) {
+      for (const invitation of otherInvitations) {
+        await prisma.$transaction([
+          prisma.boardMember.upsert({
+            where: {
+              boardId_userId: {
+                boardId: invitation.boardId,
+                userId: user.id
+              }
+            },
+            create: {
+              boardId: invitation.boardId,
+              userId: user.id,
+              role: invitation.role,
+            },
+            update: {}
+          }),
+          prisma.invitation.update({
+            where: { id: invitation.id },
+            data: {
+              status: 'ACCEPTED',
+              acceptedById: user.id,
+            },
+          }),
+        ])
+      }
     }
 
     return NextResponse.json(
@@ -79,7 +125,7 @@ export async function POST(request: NextRequest) {
           name: user.name,
           email: user.email,
         },
-        pendingInvitationsAccepted: pendingInvitations.length,
+        invitationsAccepted: (tokenInvitationBoardId ? 1 : 0) + otherInvitations.length,
       },
       { status: 201 }
     )
@@ -91,3 +137,4 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+

@@ -43,11 +43,11 @@ export async function POST(
       return NextResponse.json({ error: 'Arquivo não enviado' }, { status: 400 })
     }
 
-    // Check file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024
+    // Check file size (max 300MB)
+    const maxSize = 300 * 1024 * 1024
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Arquivo muito grande. Máximo: 50MB' },
+        { error: 'Arquivo muito grande. Máximo: 300MB' },
         { status: 400 }
       )
     }
