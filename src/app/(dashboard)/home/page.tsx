@@ -33,7 +33,7 @@ interface Board {
 
 async function fetchBoards(): Promise<Board[]> {
   const res = await fetch('/api/boards')
-  if (!res.ok) throw new Error('Erro ao carregar boards')
+  if (!res.ok) throw new Error('Erro ao carregar quadros')
   return res.json()
 }
 
@@ -61,7 +61,7 @@ export default function HomePage() {
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Erro ao criar board')
+        throw new Error(data.error || 'Erro ao criar quadro')
       }
       return res.json()
     },
@@ -69,7 +69,7 @@ export default function HomePage() {
       queryClient.invalidateQueries({ queryKey: ['boards'] })
       setShowCreateModal(false)
       setNewBoardName('')
-      addToast('success', 'Board criado com sucesso!')
+      addToast('success', 'Quadro criado com sucesso!')
     },
     onError: (error: Error) => {
       addToast('error', error.message)
@@ -83,7 +83,7 @@ export default function HomePage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Erro ao excluir board')
+        throw new Error(data.error || 'Erro ao excluir quadro')
       }
       // 204 No Content
       return
@@ -121,10 +121,10 @@ export default function HomePage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Meus Boards
+            Meus Quadros
           </h1>
           <p className="text-muted-foreground mt-1">
-            Organize seus projetos com boards estilo Kanban
+            Organize seus projetos com quadros estilo Kanban
           </p>
         </div>
         <CreateBoardPopover 
@@ -145,7 +145,7 @@ export default function HomePage() {
       {/* Error State */}
       {error && (
         <div className="text-center py-12">
-          <p className="text-red-500">Erro ao carregar boards. Tente novamente.</p>
+          <p className="text-red-500">Erro ao carregar quadros. Tente novamente.</p>
         </div>
       )}
 
@@ -156,10 +156,10 @@ export default function HomePage() {
             <LayoutGrid className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">
-            Nenhum board ainda
+            Nenhum quadro ainda
           </h3>
           <p className="text-muted-foreground mb-6">
-            Crie seu primeiro board para começar a organizar seus projetos
+            Crie seu primeiro quadro para começar a organizar seus projetos
           </p>
           <CreateBoardPopover 
             onCreateClick={() => setShowCreateModal(true)} 
@@ -190,12 +190,12 @@ export default function HomePage() {
       {/* Create Board Modal */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)}>
         <ModalHeader onClose={() => setShowCreateModal(false)}>
-          Criar novo board
+          Criar novo quadro
         </ModalHeader>
         <form onSubmit={handleCreateBoard}>
           <ModalContent>
             <Input
-              label="Nome do board"
+              label="Nome do quadro"
               placeholder="Ex: Projeto Website, Tarefas Sprint 1..."
               value={newBoardName}
               onChange={(e) => setNewBoardName(e.target.value)}
@@ -216,7 +216,7 @@ export default function HomePage() {
               isLoading={createBoardMutation.isPending}
               disabled={!newBoardName.trim()}
             >
-              Criar board
+              Criar Quadro
             </Button>
           </ModalFooter>
         </form>

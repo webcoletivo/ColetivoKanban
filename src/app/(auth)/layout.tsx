@@ -14,7 +14,7 @@ export default function AuthLayout({
             <div className="p-2 bg-primary/10 rounded-xl text-primary">
               <Kanban className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-foreground">ColetivoTrello</span>
+            <span className="text-2xl font-bold tracking-tight text-foreground">ColetivoKanban</span>
           </div>
           <p className="text-sm text-muted-foreground">Gestão de projetos simplificada</p>
         </div>

@@ -53,7 +53,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName }),
       })
-      if (!res.ok) throw new Error('Erro ao atualizar board')
+      if (!res.ok) throw new Error('Erro ao atualizar quadro')
       return res.json()
     },
     onSuccess: () => {
@@ -62,7 +62,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
       setIsEditing(false)
     },
     onError: () => {
-      addToast('error', 'Erro ao atualizar nome do board')
+      addToast('error', 'Erro ao atualizar nome do quadro')
     },
   })
 
@@ -141,7 +141,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
           {showSearch && (
             <div className="absolute right-0 top-full mt-2 w-80 bg-popover rounded-xl shadow-xl border border-border/60 p-3 z-50 animate-in fade-in zoom-in-95 duration-200">
               <Input
-                placeholder="Buscar cards..."
+                placeholder="Buscar cartões..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -173,7 +173,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
               )}
               {searchQuery && searchResults.length === 0 && (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  Nenhum card encontrado
+                  Nenhum cartão encontrado
                 </p>
               )}
             </div>
@@ -471,7 +471,7 @@ function MembersModal({
       size="md" 
     >
       <ModalHeader onClose={onClose} className="flex-shrink-0">
-        Membros do Board
+        Membros do Quadro
       </ModalHeader>
       
       {/* Content wrapper with flex layout for sticky header/scrollable body */}

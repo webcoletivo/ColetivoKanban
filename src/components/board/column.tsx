@@ -105,7 +105,7 @@ export function Column({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: cardTitle }),
       })
-      if (!res.ok) throw new Error('Erro ao criar card')
+      if (!res.ok) throw new Error('Erro ao criar cartão')
       return res.json()
     },
     onSuccess: () => {
@@ -114,7 +114,7 @@ export function Column({
       setIsAddingCard(false)
     },
     onError: () => {
-      addToast('error', 'Erro ao criar card')
+      addToast('error', 'Erro ao criar cartão')
     },
   })
 

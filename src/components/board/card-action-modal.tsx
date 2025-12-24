@@ -39,7 +39,7 @@ export function CardActionModal({
     queryKey: ['user-boards'],
     queryFn: async () => {
       const res = await fetch('/api/boards')
-      if (!res.ok) throw new Error('Erro ao carregar boards')
+      if (!res.ok) throw new Error('Erro ao carregar quadros')
       return res.json()
     },
     enabled: isOpen

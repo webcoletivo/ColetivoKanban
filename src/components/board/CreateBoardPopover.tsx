@@ -31,7 +31,7 @@ export function CreateBoardPopover({ onCreateClick, onImportClick }: CreateBoard
     <div className="relative" ref={containerRef}>
       <Button onClick={() => setIsOpen(!isOpen)} className="shadow-sm">
         <Plus className="h-5 w-5 mr-1" />
-        Novo Board
+        Novo Quadro
       </Button>
 
       {isOpen && (
@@ -41,7 +41,7 @@ export function CreateBoardPopover({ onCreateClick, onImportClick }: CreateBoard
           
           <div className="absolute right-0 top-full mt-2 w-72 bg-popover text-popover-foreground rounded-xl shadow-2xl border border-border/60 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
              <div className="px-4 py-3 border-b border-border/40 bg-muted/30">
-                <h3 className="text-sm font-semibold">Criar board</h3>
+                <h3 className="text-sm font-semibold">Criar quadro</h3>
              </div>
              
              <div className="p-2 space-y-1">
@@ -67,7 +67,7 @@ export function CreateBoardPopover({ onCreateClick, onImportClick }: CreateBoard
                   </div>
                   <div>
                     <p className="text-sm font-medium">Importar da Trello</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Traga seu arquivo JSON do Trello e crie o board automaticamente.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Traga seu arquivo JSON do Trello e crie o quadro automaticamente.</p>
                   </div>
                 </button>
              </div>

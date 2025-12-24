@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'ColetivoKanban - Gestão de Projetos',
-  description: 'Organize seus projetos com boards, colunas e cards estilo Kanban',
+  description: 'Organize seus projetos com quadros, colunas e cards estilo Kanban',
 }
 
 export default function RootLayout({
