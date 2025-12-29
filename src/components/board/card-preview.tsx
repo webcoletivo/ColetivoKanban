@@ -136,6 +136,16 @@ export function CardPreview({
     }
   }
 
+  // ... inside CardPreview
+  const [imageError, setImageError] = React.useState(false)
+
+  // Reset error when url changes
+  React.useEffect(() => {
+    setImageError(false)
+  }, [card.coverImageUrl])
+
+  // ... existing hooks
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -147,6 +157,13 @@ export function CardPreview({
   const hasDueDate = !!card.dueAt
   const overdue = hasDueDate && !card.isCompleted && isOverdue(card.dueAt!)
   const dueToday = hasDueDate && !card.isCompleted && isDueToday(card.dueAt!)
+
+  const showCover = card.coverType !== 'none' && (card.coverColor || card.coverImageUrl)
+  const isFullCover = showCover && card.coverSize === 'full'
+  const isImageCover = card.coverType === 'image' && !!card.coverImageUrl && !imageError
+  
+  // Decide background color for full cover (fallback or color mode)
+  const fullCoverBgColor = card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6'
 
   return (
     <div
@@ -170,33 +187,48 @@ export function CardPreview({
         isActive && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_20px_rgba(0,0,0,0.3)] dark:shadow-[0_0_30px_rgba(0,0,0,0.5)]',
         isEditing && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_25px_rgba(0,0,0,0.4)]',
         card.isCompleted && 'opacity-60',
-        card.coverType !== 'none' && card.coverSize === 'full' && (card.coverColor || card.coverImageUrl) && 'text-white'
+        isFullCover && 'text-white border-0' // Full cover text style
       )}
-      style={{
-        ...style,
-        ...(card.coverType !== 'none' && card.coverSize === 'full' && (card.coverColor || card.coverImageUrl) ? {
-          backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
-          backgroundImage: card.coverType === 'image' && card.coverImageUrl 
-            ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url(${card.coverImageUrl})` 
-            : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        } : {})
-      }}
+      style={style}
     >
-
-
-
+      {/* Full Cover Background */}
+      {isFullCover && (
+        <div 
+          className="absolute inset-0 z-0 transition-colors duration-200"
+          style={{ backgroundColor: isImageCover ? 'transparent' : fullCoverBgColor }}
+        >
+          {isImageCover && (
+            <>
+              {/* Using standard img for simplicity and onError support without Next/Image domain config */}
+              <img 
+                src={card.coverImageUrl!} 
+                alt="Cover"
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+              />
+              <div className="absolute inset-0 bg-black/40" /> {/* Gradient overlay */}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Strip Cover (32px fixed height) */}
-      {card.coverType !== 'none' && card.coverSize === 'strip' && (card.coverColor || card.coverImageUrl) && (
+      {showCover && card.coverSize === 'strip' && (
         <div 
-          className="w-full h-[32px] bg-cover bg-center" // Reduced height for strip cover to match Trello style better if needed, but keeping original structure mostly
+          className="w-full h-[32px] relative overflow-hidden" 
           style={{ 
-            backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
-            backgroundImage: card.coverType === 'image' && card.coverImageUrl ? `url(${card.coverImageUrl})` : 'none',
+            backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6'
           }}
-        />
+        >
+          {isImageCover && (
+            <img 
+              src={card.coverImageUrl!}
+              alt="Cover"
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          )}
+        </div>
       )}
 
       {/* Card Content Area */}

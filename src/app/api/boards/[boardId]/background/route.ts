@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
-import { writeFile, mkdir, unlink } from 'fs/promises'
+import { saveFile, deleteFile, STORAGE_DIRS } from '@/lib/storage'
 import path from 'path'
 
 import { v4 as uuidv4 } from 'uuid'
@@ -55,16 +55,9 @@ export async function POST(
       )
     }
 
-    // Local Storage Logic
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
-    // Use UUID for filename (safer and consistent with card covers)
+    // Use UUID for filename
     const fileExtension = file.name.split('.').pop() || 'jpg'
     const fileName = `${uuidv4()}.${fileExtension}`
-    
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'boards', boardId)
-    await mkdir(uploadDir, { recursive: true })
     
     // Delete old file if exists
     const board = await prisma.board.findUnique({
@@ -73,25 +66,22 @@ export async function POST(
     })
     
     if (board?.backgroundImageKey) {
-      const oldPath = path.join(process.cwd(), 'public', 'uploads', 'boards', board.backgroundImageKey)
-      try {
-        await unlink(oldPath)
-      } catch (err) {
-        console.warn('[Upload] Failed to delete old background:', err)
-      }
+      // Old key format was "boardId/filename"
+      await deleteFile(STORAGE_DIRS.BOARDS, board.backgroundImageKey)
     }
 
-    const filePath = path.join(uploadDir, fileName)
-    await writeFile(filePath, buffer)
+    // Save new file
+    // Folder structure: boards/boardId
+    const folder = path.join(STORAGE_DIRS.BOARDS, boardId)
+    const { url } = await saveFile(file, folder, fileName)
 
     // Storage key logic (path relative to boards folder)
     const storageKey = `${boardId}/${fileName}`
-    const backgroundImageUrl = `/uploads/boards/${storageKey}`
 
     const updatedBoard = await prisma.board.update({
       where: { id: boardId },
       data: {
-        backgroundImageUrl,
+        backgroundImageUrl: url,
         backgroundImageKey: storageKey,
       },
     })
@@ -134,12 +124,7 @@ export async function DELETE(
     })
 
     if (board?.backgroundImageKey) {
-      const oldPath = path.join(process.cwd(), 'public', 'uploads', 'boards', board.backgroundImageKey)
-      try {
-        await unlink(oldPath)
-      } catch (err) {
-        console.warn('Failed to delete background file:', err)
-      }
+      await deleteFile(STORAGE_DIRS.BOARDS, board.backgroundImageKey)
     }
 
     const updatedBoard = await prisma.board.update({

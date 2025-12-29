@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
-import { writeFile, mkdir, unlink } from 'fs/promises'
+import { saveFile, deleteFile, STORAGE_DIRS } from '@/lib/storage'
 import fs from 'fs'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
 const LOG_FILE = join(process.cwd(), 'server_errors.log')
-const UPLOAD_DIR = join(process.cwd(), 'public', 'uploads', 'covers')
 
 // POST /api/cards/[cardId]/cover - Upload card cover image
 export async function POST(
@@ -58,36 +57,24 @@ export async function POST(
       return NextResponse.json({ error: 'Arquivo muito grande. Máximo 10MB.' }, { status: 400 })
     }
 
-    // Create upload directory
-    await mkdir(UPLOAD_DIR, { recursive: true })
-
     // Generate unique filename
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
     const fileExtension = file.name.split('.').pop()
     const fileName = `${uuidv4()}.${fileExtension}`
-    const filePath = join(UPLOAD_DIR, fileName)
 
     // Delete old file if exists
     if (card.coverImageKey) {
-      try {
-        await unlink(join(UPLOAD_DIR, card.coverImageKey))
-      } catch (e) {
-        console.error('Error deleting old cover:', e)
-      }
+      await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
     }
 
-    // Write new file
-    await writeFile(filePath, buffer)
-
-    const coverImageUrl = `/uploads/covers/${fileName}`
+    // Save new file
+    const { url } = await saveFile(file, STORAGE_DIRS.COVERS, fileName)
 
     // Update card
     const updatedCard = await (prisma.card as any).update({
       where: { id: cardId },
       data: {
         coverType: 'image',
-        coverImageUrl,
+        coverImageUrl: url,
         coverImageKey: fileName,
         coverSize: 'strip' // Default to strip when uploading
       }
@@ -140,11 +127,7 @@ export async function DELETE(
 
     // Delete file if exists
     if (card.coverImageKey) {
-      try {
-        await unlink(join(UPLOAD_DIR, card.coverImageKey))
-      } catch (e) {
-        console.error('Error deleting cover file:', e)
-      }
+      await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
     }
 
     // Update card - always set to none, even if already none (idempotent)

@@ -217,7 +217,7 @@ export function Column({
       <div 
         ref={setDroppableRef}
         className={cn(
-          "flex-1 overflow-y-auto p-2 pt-0 space-y-2 translate-z-0",
+          "flex-1 overflow-y-auto p-2 pt-0 space-y-2 translate-z-0 flex flex-col",
           column.cards.length === 0 && "min-h-[150px]"
         )}
       >
@@ -242,7 +242,7 @@ export function Column({
         </SortableContext>
 
         {column.cards.length === 0 && !isAddingCard && (
-           <div className="h-full min-h-[100px] rounded-lg border-2 border-dashed border-border/20 flex items-center justify-center text-muted-foreground/0 group-hover:text-muted-foreground/20 transition-colors pointer-events-none">
+           <div className="flex-1 min-h-[100px] rounded-lg border-2 border-dashed border-border/20 flex items-center justify-center text-muted-foreground/0 group-hover:text-muted-foreground/20 transition-colors pointer-events-none">
               Solte aqui
            </div>
         )}
