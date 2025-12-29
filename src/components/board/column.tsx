@@ -25,6 +25,7 @@ interface Card {
   coverType: string | null
   coverColor: string | null
   coverImageUrl: string | null
+  coverImageKey: string | null
 }
 
 interface ColumnProps {

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { cn, getInitials } from '@/lib/utils'
+import { cn, getInitials, getAssetUrl } from '@/lib/utils'
 
 interface AvatarProps {
   src?: string | null
@@ -64,7 +64,7 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
     >
       {showImage ? (
         <img
-          src={src}
+          src={getAssetUrl(src) || undefined}
           alt={name}
           className="h-full w-full object-cover"
           onError={() => setImageError(true)}

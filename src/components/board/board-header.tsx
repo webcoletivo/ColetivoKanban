@@ -8,7 +8,7 @@ import { Modal, ModalHeader } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
-import { cn } from '@/lib/utils'
+import { cn, getAssetUrl } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface BoardHeaderProps {
@@ -24,6 +24,8 @@ interface BoardHeaderProps {
       role: string
     }>
     backgroundImageUrl?: string | null
+    backgroundImageKey?: string | null
+    updatedAt?: string // For cache busting
   }
   onOpenCard: (cardId: string) => void
 }
@@ -187,7 +189,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
         >
           <AvatarGroup
             avatars={board.members.map((m) => ({
-              src: m.avatarUrl,
+              src: getAssetUrl(m.avatarUrl),
               name: m.name,
             }))}
             max={3}
@@ -229,7 +231,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
           isOpen={showBackgroundModal}
           onClose={() => setShowBackgroundModal(false)}
           boardId={board.id}
-          currentBackground={board.backgroundImageUrl}
+          currentBackground={getAssetUrl(board.backgroundImageKey || board.backgroundImageUrl, board.updatedAt)}
         />
       )}
     </div>

@@ -84,3 +84,26 @@ export function toLocalDateTimeString(isoString: string): string {
   const minutes = date.getMinutes().toString().padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}`
 }
+
+/**
+ * Generates a URL for an asset (image/file).
+ * Handles both legacy full URLs and new storage keys.
+ * Uses the proxy endpoint for storage keys.
+ */
+export function getAssetUrl(keyOrUrl: string | null | undefined, updatedAt?: string | Date): string | undefined {
+  if (!keyOrUrl) return undefined
+
+  let url: string
+  if (keyOrUrl.startsWith('http') || keyOrUrl.startsWith('/')) {
+    url = keyOrUrl
+  } else {
+    url = `/api/files/inline?key=${keyOrUrl}`
+  }
+
+  if (updatedAt) {
+    const version = new Date(updatedAt).getTime()
+    return `${url}${url.includes('?') ? '&' : '?'}v=${version}`
+  }
+
+  return url
+}

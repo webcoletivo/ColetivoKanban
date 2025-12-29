@@ -93,7 +93,7 @@ export async function POST(
       where: { id: cardId },
       data: {
         coverType: 'image',
-        coverImageUrl,
+        coverImageUrl: null, // Clear URL, usage via key
         coverImageKey: storageKey,
         coverSize: 'strip' // Default to strip when uploading
       }

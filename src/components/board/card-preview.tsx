@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Clock, MessageSquare, Paperclip, CheckSquare, Circle, CheckCircle2, Check, LayoutTemplate } from 'lucide-react'
-import { cn, formatDate, isOverdue, isDueToday } from '@/lib/utils'
+import { cn, formatDate, isOverdue, isDueToday, getAssetUrl } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 
 interface CardPreviewProps {
@@ -24,6 +24,7 @@ interface CardPreviewProps {
     coverType?: string | null
     coverColor?: string | null
     coverImageUrl?: string | null
+    coverImageKey?: string | null
     coverSize?: string | null
     isTemplate?: boolean
   }
@@ -160,7 +161,7 @@ export function CardPreview({
 
   const showCover = card.coverType !== 'none' && (card.coverColor || card.coverImageUrl)
   const isFullCover = showCover && card.coverSize === 'full'
-  const isImageCover = card.coverType === 'image' && !!card.coverImageUrl && !imageError
+  const isImageCover = card.coverType === 'image' && !!(card.coverImageKey || card.coverImageUrl) && !imageError
   
   // Decide background color for full cover (fallback or color mode)
   const fullCoverBgColor = card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6'
@@ -201,7 +202,7 @@ export function CardPreview({
             <>
               {/* Using standard img for simplicity and onError support without Next/Image domain config */}
               <img 
-                src={card.coverImageUrl!} 
+                src={getAssetUrl(card.coverImageKey || card.coverImageUrl)!} 
                 alt="Cover"
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
@@ -222,7 +223,7 @@ export function CardPreview({
         >
           {isImageCover && (
             <img 
-              src={card.coverImageUrl!}
+              src={getAssetUrl(card.coverImageKey || card.coverImageUrl)!}
               alt="Cover"
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}

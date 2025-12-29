@@ -42,14 +42,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { url } = await saveFile(file, STORAGE_DIRS.AVATARS, filename)
+    const { storageKey } = await saveFile(file, STORAGE_DIRS.AVATARS, filename)
 
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { avatarUrl: url },
+      data: { avatarUrl: storageKey },
     })
 
-    return NextResponse.json({ avatarUrl: url })
+    return NextResponse.json({ avatarUrl: `/api/files/inline?key=${storageKey}` })
   } catch (error) {
     console.error('Avatar upload error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

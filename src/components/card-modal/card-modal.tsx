@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
-import { cn, formatDateTime, isOverdue, isDueToday, toLocalDateTimeString } from '@/lib/utils'
+import { cn, formatDateTime, isOverdue, isDueToday, toLocalDateTimeString, getAssetUrl } from '@/lib/utils'
 import { CardDescription } from './card-description'
 import { CardLabels } from './card-labels'
 import { CardChecklists } from './card-checklists'
@@ -80,6 +80,7 @@ interface CardData {
   coverType: string | null
   coverColor: string | null
   coverImageUrl: string | null
+  coverImageKey: string | null
   coverSize: string | null
   isTemplate: boolean
 }
@@ -433,7 +434,7 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
             className="w-full h-32 md:h-40 shrink-0 relative bg-cover bg-center"
             style={{ 
               backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
-              backgroundImage: card.coverType === 'image' && card.coverImageUrl ? `url(${card.coverImageUrl})` : 'none',
+              backgroundImage: card.coverType === 'image' ? `url(${getAssetUrl(card.coverImageKey || card.coverImageUrl)})` : 'none',
             }}
           >
              {/* Small visual overlay if it's a light color for better close-button visibility */}
@@ -707,6 +708,7 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
           type: card.coverType,
           color: card.coverColor,
           imageUrl: card.coverImageUrl,
+          imageKey: card.coverImageKey,
           size: card.coverSize,
         }}
         onUpdate={(data) => updateCardMutation.mutate(data)}

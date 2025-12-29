@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { X, Check, Trash2, Upload, Loader2, Image as ImageIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getAssetUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
 const TRELLO_COLORS = [
@@ -28,6 +28,7 @@ interface CardCoverPopoverProps {
     type: string | null
     color: string | null
     imageUrl: string | null
+    imageKey?: string | null
     size: string | null
   }
   onUpdate: (data: any) => void
@@ -195,7 +196,7 @@ export function CardCoverPopover({
                   className="absolute top-0 left-0 right-0 h-4" 
                   style={{ 
                     backgroundColor: currentCover.type === 'color' ? currentCover.color || '#dfe1e6' : '#dfe1e6',
-                    backgroundImage: currentCover.type === 'image' && currentCover.imageUrl ? `url(${currentCover.imageUrl})` : 'none',
+                    backgroundImage: currentCover.type === 'image' ? `url(${getAssetUrl(currentCover.imageKey || currentCover.imageUrl)})` : 'none',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
                   }}
@@ -225,7 +226,7 @@ export function CardCoverPopover({
                   className="absolute inset-0" 
                   style={{ 
                     backgroundColor: currentCover.type === 'color' ? currentCover.color || '#dfe1e6' : '#dfe1e6',
-                    backgroundImage: currentCover.type === 'image' && currentCover.imageUrl ? `url(${currentCover.imageUrl})` : 'none',
+                    backgroundImage: currentCover.type === 'image' ? `url(${getAssetUrl(currentCover.imageKey || currentCover.imageUrl)})` : 'none',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     opacity: 0.8

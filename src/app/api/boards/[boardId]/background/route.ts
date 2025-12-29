@@ -97,7 +97,7 @@ export async function POST(
     const updatedBoard = await prisma.board.update({
       where: { id: boardId },
       data: {
-        backgroundImageUrl,
+        backgroundImageUrl: null, // Clear URL to force usage of key/proxy
         backgroundImageKey: storageKey,
       },
     })

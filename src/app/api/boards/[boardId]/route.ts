@@ -84,6 +84,7 @@ export async function GET(
       createdAt: board.createdAt,
       updatedAt: board.updatedAt,
       backgroundImageUrl: board.backgroundImageUrl,
+      backgroundImageKey: board.backgroundImageKey,
       myRole: myMembership?.role,
       columns: board.columns.map((col) => ({
         id: col.id,
@@ -114,6 +115,7 @@ export async function GET(
           coverType: card.coverType,
           coverColor: card.coverColor,
           coverImageUrl: card.coverImageUrl,
+          coverImageKey: card.coverImageKey,
           coverSize: card.coverSize,
         })),
       })),
