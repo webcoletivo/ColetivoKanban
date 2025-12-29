@@ -48,7 +48,10 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   // Always show fallback on server and initial client render to avoid hydration mismatch
   const showImage = mounted && src && !imageError
   const initials = getInitials(name)
-  const bgColor = getColorFromName(name)
+  
+  // Use a stable default color during SSR/initial render to avoid hydration mismatch
+  // The name-based color is only applied after the component mounts
+  const bgColor = mounted ? getColorFromName(name) : colors[0]
 
   return (
     <div

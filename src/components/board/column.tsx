@@ -148,13 +148,13 @@ export function Column({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex-shrink-0 w-72 bg-muted/40 rounded-xl flex flex-col max-h-full border border-border/40',
+        'flex-shrink-0 w-72 bg-muted/40 rounded-xl flex flex-col max-h-[calc(100vh-140px)] border border-border/40',
         isDragging && 'opacity-50 ring-2 ring-primary rotate-2'
       )}
     >
-      {/* Column Header */}
+      {/* Column Header - Fixed, doesn't scroll */}
       <div 
-        className="flex items-center justify-between p-3 pb-2 hover:bg-muted/60 rounded-t-xl transition-colors group"
+        className="flex-shrink-0 flex items-center justify-between p-3 pb-2 hover:bg-muted/60 rounded-t-xl transition-colors group"
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* Drag Handle */}
@@ -213,12 +213,13 @@ export function Column({
         </div>
       </div>
 
-      {/* Cards Container */}
+      {/* Cards Container - Scrollable area */}
       <div 
         ref={setDroppableRef}
         className={cn(
-          "flex-1 overflow-y-auto p-2 pt-0 space-y-2 translate-z-0 flex flex-col",
-          column.cards.length === 0 && "min-h-[150px]"
+          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 pt-0 space-y-2 flex flex-col",
+          "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40",
+          column.cards.length === 0 && "min-h-[100px]"
         )}
       >
         <SortableContext
@@ -242,12 +243,14 @@ export function Column({
         </SortableContext>
 
         {column.cards.length === 0 && !isAddingCard && (
-           <div className="flex-1 min-h-[100px] rounded-lg border-2 border-dashed border-border/20 flex items-center justify-center text-muted-foreground/0 group-hover:text-muted-foreground/20 transition-colors pointer-events-none">
+           <div className="flex-1 min-h-[80px] rounded-lg border-2 border-dashed border-border/20 flex items-center justify-center text-muted-foreground/0 group-hover:text-muted-foreground/20 transition-colors pointer-events-none">
               Solte aqui
            </div>
         )}
+      </div>
 
-        {/* Add Card Form/Button */}
+      {/* Add Card Footer - Fixed, doesn't scroll */}
+      <div className="flex-shrink-0 p-2 pt-0">
         {isAddingCard ? (
           <form onSubmit={handleCreateCard} className="bg-background rounded-lg p-2 shadow-sm border border-border/60">
             <textarea

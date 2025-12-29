@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ColetivoKanban
 
-## Getting Started
+Aplicativo Kanban estilo Trello, construído com Next.js, Prisma e React Query.
 
-First, run the development server:
+## Começando
+
+### Pré-requisitos
+
+- Node.js 18+
+- PostgreSQL
+- (Opcional) Bucket S3 para armazenamento de arquivos
+
+### Instalação
 
 ```bash
+npm install
+npx prisma generate
+npx prisma migrate deploy
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Variáveis de Ambiente
 
-## Learn More
+### Banco de Dados
 
-To learn more about Next.js, take a look at the following resources:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/coletivo"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Autenticação
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+AUTH_SECRET="your-secret-key-for-jwt"
+```
 
-## Deploy on Vercel
+### E-mail (Nodemailer)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```env
+SMTP_HOST="smtp.example.com"
+SMTP_PORT="587"
+SMTP_USER="user@example.com"
+SMTP_PASS="your-password"
+EMAIL_FROM="noreply@example.com"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Configuração de Storage S3
+
+O ColetivoKanban suporta armazenamento S3 para uploads (backgrounds, capas, anexos). Compatível com AWS S3, Cloudflare R2, Wasabi, MinIO, etc.
+
+### Variáveis S3 (Obrigatórias)
+
+```env
+S3_REGION=us-east-2
+S3_BUCKET=coletivokanban
+S3_ACCESS_KEY_ID=your-access-key
+S3_SECRET_ACCESS_KEY=your-secret-key
+```
+
+### Variáveis S3 (Opcionais)
+
+```env
+# Para serviços S3-compatíveis (R2, Wasabi, MinIO)
+S3_ENDPOINT=https://s3.wasabisys.com
+
+# MinIO geralmente requer true
+S3_FORCE_PATH_STYLE=false
+
+# Tempo de expiração das URLs assinadas (default: 900 = 15 min)
+S3_SIGNED_URL_EXPIRES_SECONDS=900
+```
+
+### CORS do Bucket
+
+Configure o CORS no seu bucket para permitir requests do seu domínio:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://seu-dominio.com"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Length", "Content-Type", "Content-Disposition"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+### Policy IAM Mínima
+
+Crie um usuário IAM com as seguintes permissões:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListBucket",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::SEU_BUCKET"]
+    },
+    {
+      "Sid": "ObjectRW",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": ["arn:aws:s3:::SEU_BUCKET/*"]
+    }
+  ]
+}
+```
+
+### Fallback para Storage Local
+
+Se as variáveis S3 não estiverem configuradas, o aplicativo usará armazenamento local automaticamente.
+
+---
+
+## Deploy no Coolify
+
+### Variáveis de Ambiente
+
+Adicione todas as variáveis listadas acima no painel do Coolify.
+
+### Volumes Persistentes (se não usar S3)
+
+Se não usar S3, monte um volume persistente para `/app/uploads`:
+
+```
+/app/uploads -> persistent-volume
+```
+
+---
+
+## Scripts
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run start` | Iniciar produção |
+| `npm run lint` | Verificar linting |
+| `npm run typecheck` | Verificar TypeScript |
+
+---
+
+## Tecnologias
+
+- Next.js 16 (App Router)
+- React 19
+- Prisma (PostgreSQL)
+- React Query (TanStack Query)
+- Tailwind CSS
+- dnd-kit (Drag and Drop)
+- AWS SDK v3 (S3)
+
+---
+
+## Licença
+
+Projeto privado.

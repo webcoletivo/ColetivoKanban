@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
-import { saveFile, deleteFile, STORAGE_DIRS } from '@/lib/storage'
-import fs from 'fs'
-import { join } from 'path'
+import { isUsingS3, deleteFile, STORAGE_DIRS, getFileUrl } from '@/lib/storage'
+import { uploadFile as s3UploadFile, generateStorageKey, S3_PREFIXES, deleteObject as s3DeleteObject } from '@/lib/s3'
+import { saveFile as localSaveFile } from '@/lib/storage'
 import { v4 as uuidv4 } from 'uuid'
-
-const LOG_FILE = join(process.cwd(), 'server_errors.log')
 
 // POST /api/cards/[cardId]/cover - Upload card cover image
 export async function POST(
@@ -57,39 +55,58 @@ export async function POST(
       return NextResponse.json({ error: 'Arquivo muito grande. Máximo 10MB.' }, { status: 400 })
     }
 
+    // Delete old cover if exists
+    if (card.coverImageKey) {
+      try {
+        if (isUsingS3()) {
+          await s3DeleteObject(card.coverImageKey)
+        } else {
+          await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
+        }
+      } catch (e) {
+        console.error('Error deleting old cover:', e)
+      }
+    }
+
     // Generate unique filename
     const fileExtension = file.name.split('.').pop()
     const fileName = `${uuidv4()}.${fileExtension}`
+    
+    let storageKey: string
+    let coverImageUrl: string
 
-    // Delete old file if exists
-    if (card.coverImageKey) {
-      await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
+    if (isUsingS3()) {
+      // S3 Upload
+      storageKey = generateStorageKey(S3_PREFIXES.COVERS, cardId, fileName)
+      await s3UploadFile(file, storageKey)
+      // URL will be generated via API route, use placeholder
+      coverImageUrl = `/api/cards/${cardId}/cover/image`
+    } else {
+      // Local storage
+      const result = await localSaveFile(file, STORAGE_DIRS.COVERS, fileName, cardId)
+      storageKey = fileName // For local, just the filename
+      coverImageUrl = result.url
     }
-
-    // Save new file
-    const { url } = await saveFile(file, STORAGE_DIRS.COVERS, fileName)
 
     // Update card
     const updatedCard = await (prisma.card as any).update({
       where: { id: cardId },
       data: {
         coverType: 'image',
-        coverImageUrl: url,
-        coverImageKey: fileName,
+        coverImageUrl,
+        coverImageKey: storageKey,
         coverSize: 'strip' // Default to strip when uploading
       }
     })
 
     return NextResponse.json({
-      coverType: (updatedCard as any).coverType,
-      coverImageUrl: (updatedCard as any).coverImageUrl,
-      coverSize: (updatedCard as any).coverSize
+      coverType: updatedCard.coverType,
+      coverImageUrl: updatedCard.coverImageUrl,
+      coverSize: updatedCard.coverSize
     })
 
   } catch (error: any) {
-    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] POST /api/cards/${cardId}/cover Error: ${error.stack || error}\n`)
-    console.error('Upload cover error for cardId:', cardId)
-    console.error('Error details:', error)
+    console.error('Upload cover error for cardId:', cardId, error)
     return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 })
   }
 }
@@ -127,7 +144,15 @@ export async function DELETE(
 
     // Delete file if exists
     if (card.coverImageKey) {
-      await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
+      try {
+        if (isUsingS3()) {
+          await s3DeleteObject(card.coverImageKey)
+        } else {
+          await deleteFile(STORAGE_DIRS.COVERS, card.coverImageKey)
+        }
+      } catch (e) {
+        console.error('Error deleting cover file:', e)
+      }
     }
 
     // Update card - always set to none, even if already none (idempotent)
@@ -144,9 +169,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Capa removida' })
 
   } catch (error: any) {
-    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] DELETE /api/cards/${cardId}/cover Error: ${error.stack || error}\n`)
-    console.error('Delete cover error for cardId:', cardId)
-    console.error('Error details:', error)
+    console.error('Delete cover error for cardId:', cardId, error)
     return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 })
   }
 }

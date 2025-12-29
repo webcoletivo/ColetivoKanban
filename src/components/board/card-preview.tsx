@@ -180,7 +180,7 @@ export function CardPreview({
       data-no-drag-scroll
       data-card-id={card.id}
       className={cn(
-        'bg-card text-card-foreground rounded-lg shadow-sm border border-border/60 box-border',
+        'flex-shrink-0 bg-card text-card-foreground rounded-lg shadow-sm border border-border/60 box-border',
         !isEditing && 'overflow-hidden',
         'cursor-pointer hover:border-primary/50 hover:shadow-md transition-all duration-200 group relative',
         isDragging && 'opacity-50 shadow-lg rotate-2',

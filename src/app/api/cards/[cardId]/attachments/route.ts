@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
+import { 
+  isUsingS3, 
+  saveFile, 
+  STORAGE_DIRS,
+  getCurrentBucket 
+} from '@/lib/storage'
+import { 
+  uploadFile as s3UploadFile, 
+  generateStorageKey, 
+  S3_PREFIXES 
+} from '@/lib/s3'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
-// POST /api/cards/[cardId]/attachments - Upload attachment (local storage)
+// POST /api/cards/[cardId]/attachments - Upload attachment
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
@@ -52,16 +63,26 @@ export async function POST(
       )
     }
 
-    // Local Storage Logic
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', cardId)
-    
-    await mkdir(uploadDir, { recursive: true })
-    await writeFile(path.join(uploadDir, filename), buffer)
+    let storageKey: string
+    let bucket: string | undefined
 
-    // Storage key logic (path relative to public/uploads)
-    const storageKey = path.join(cardId, filename).replace(/\\/g, '/')
+    if (isUsingS3()) {
+      // S3 Upload
+      storageKey = generateStorageKey(S3_PREFIXES.ATTACHMENTS, cardId, file.name)
+      const result = await s3UploadFile(file, storageKey)
+      bucket = result.bucket
+    } else {
+      // Local Storage
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', cardId)
+      
+      await mkdir(uploadDir, { recursive: true })
+      await writeFile(path.join(uploadDir, filename), buffer)
+
+      // Storage key is path relative to public/uploads
+      storageKey = path.join(cardId, filename).replace(/\\/g, '/')
+    }
 
     const attachment = await prisma.$transaction(async (tx: any) => {
       const newAttachment = await tx.attachment.create({
@@ -95,6 +116,7 @@ export async function POST(
       fileName: attachment.fileName,
       fileSize: Number(attachment.fileSize),
       mimeType: attachment.mimeType,
+      storageKey: attachment.storageKey,
       createdAt: attachment.createdAt,
       uploadedBy: attachment.uploadedBy,
     }, { status: 201 })

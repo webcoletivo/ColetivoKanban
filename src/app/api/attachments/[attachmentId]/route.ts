@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
+import { deleteFile, isUsingS3 } from '@/lib/storage'
 
 // DELETE /api/attachments/[attachmentId] - Delete attachment
 export async function DELETE(
@@ -34,20 +35,26 @@ export async function DELETE(
       throw error
     }
 
-    // Physical deletion logic
-    const path = await import('path')
-    const { unlink } = await import('fs/promises')
-    const { existsSync } = await import('fs')
-    
-    const filePath = path.join(process.cwd(), 'public', 'uploads', attachment.storageKey)
-    
-    if (existsSync(filePath)) {
-      try {
-        await unlink(filePath)
-      } catch (unlinkError) {
-        console.error('Error deleting physical file:', unlinkError)
-        // We continue anyway to remove the database record
+    // Delete physical file from storage (S3 or local)
+    try {
+      if (isUsingS3()) {
+        // S3: storageKey is the full path
+        await deleteFile(attachment.storageKey)
+      } else {
+        // Local storage: file is in public/uploads/[storageKey]
+        const path = await import('path')
+        const { unlink } = await import('fs/promises')
+        const { existsSync } = await import('fs')
+        
+        const filePath = path.join(process.cwd(), 'public', 'uploads', attachment.storageKey)
+        
+        if (existsSync(filePath)) {
+          await unlink(filePath)
+        }
       }
+    } catch (deleteError) {
+      console.error('Error deleting physical file:', deleteError)
+      // Continue anyway to remove the database record
     }
 
     await prisma.$transaction([

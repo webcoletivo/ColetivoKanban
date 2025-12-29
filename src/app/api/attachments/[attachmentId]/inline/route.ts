@@ -3,10 +3,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
 import { isUsingS3, getFileUrl } from '@/lib/storage'
+import { readFile } from 'fs/promises'
 import path from 'path'
 import { existsSync } from 'fs'
 
-// GET /api/attachments/[attachmentId]/download - Download attachment
+// GET /api/attachments/[attachmentId]/inline - Serve attachment for inline preview
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ attachmentId: string }> }
@@ -31,31 +32,29 @@ export async function GET(
     try {
       await requireBoardPermission(attachment.card.boardId, session.user.id, 'view_board')
     } catch (error) {
-       // If user cannot view board, they cannot download attachment
       if (error instanceof PermissionError) {
-         return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+        return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
       }
       throw error
     }
 
     if (isUsingS3()) {
-      // S3: Redirect to presigned URL with attachment disposition
+      // S3: Redirect to presigned URL
       const presignedUrl = await getFileUrl(attachment.storageKey, {
-        disposition: 'attachment',
+        disposition: 'inline',
         filename: attachment.fileName,
         contentType: attachment.mimeType,
       })
       
       return NextResponse.redirect(presignedUrl)
     } else {
-      // Local storage: Stream the file with attachment disposition
+      // Local storage: Stream the file
       const filePath = path.join(process.cwd(), 'public', 'uploads', attachment.storageKey)
       
       if (!existsSync(filePath)) {
-          return NextResponse.json({ error: 'Arquivo físico não encontrado' }, { status: 404 })
+        return NextResponse.json({ error: 'Arquivo físico não encontrado' }, { status: 404 })
       }
 
-      // Stream the file
       const { createReadStream } = await import('fs')
       const fileStream = createReadStream(filePath)
 
@@ -70,23 +69,22 @@ export async function GET(
         },
       })
 
-      // Map QuickTime to video/mp4 where possible for better browser support
       let contentType = attachment.mimeType
       if (attachment.fileName.endsWith('.mov') && contentType === 'application/octet-stream') {
-          contentType = 'video/quicktime'
+        contentType = 'video/quicktime'
       }
 
       return new NextResponse(readableStream, {
         headers: {
           'Content-Type': contentType,
           'Content-Length': attachment.fileSize.toString(),
-          'Content-Disposition': `attachment; filename="${encodeURIComponent(attachment.fileName)}"`,
+          'Content-Disposition': `inline; filename="${encodeURIComponent(attachment.fileName)}"`,
           'Cache-Control': 'private, max-age=3600',
         },
       })
     }
   } catch (error) {
-    console.error('Download attachment error:', error)
+    console.error('Inline attachment error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }

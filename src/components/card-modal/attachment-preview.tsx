@@ -65,7 +65,7 @@ export function AttachmentPreview({
   const isVideo = attachment.mimeType.startsWith('video/')
   const isAudio = attachment.mimeType.startsWith('audio/')
   const downloadUrl = `/api/attachments/${attachment.id}/download`
-  const inlineUrl = `${downloadUrl}?inline=true`
+  const inlineUrl = `/api/attachments/${attachment.id}/inline`
 
   // Reset zoom and position when attachment changes or modal opens
   React.useEffect(() => {
