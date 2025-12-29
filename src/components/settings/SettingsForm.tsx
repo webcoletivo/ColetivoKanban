@@ -104,21 +104,37 @@ export function SettingsForm() {
                 key={theme.id}
                 type="button"
                 onClick={() => {
-                  setValue('theme', theme.id as any)
-                  setTheme(theme.id)
+                  const newTheme = theme.id as any
+                  setValue('theme', newTheme)
+                  setTheme(newTheme)
+                  // Auto-save theme for immediate persistence
+                  updatePreferences({ theme: newTheme }, {
+                    onSuccess: () => {
+                      addToast('success', `Tema ${theme.label.toLowerCase()} salvo`)
+                    },
+                    onError: () => {
+                      addToast('error', 'Erro ao salvar tema')
+                    }
+                  })
                 }}
+                disabled={isUpdating}
                 className={cn(
                   'flex flex-col items-center gap-3 p-4 rounded-xl border transition-all relative overflow-hidden',
                   themeValue === theme.id
                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                    : 'border-border/60 hover:border-border hover:bg-secondary/50'
+                    : 'border-border/60 hover:border-border hover:bg-secondary/50',
+                  isUpdating && 'opacity-50 cursor-not-allowed'
                 )}
               >
-                <theme.icon className={cn('h-6 w-6 transition-colors', themeValue === theme.id ? 'text-primary' : 'text-muted-foreground')} />
+                {isUpdating && themeValue === theme.id ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                ) : (
+                    <theme.icon className={cn('h-6 w-6 transition-colors', themeValue === theme.id ? 'text-primary' : 'text-muted-foreground')} />
+                )}
                 <span className={cn('text-sm font-medium transition-colors', themeValue === theme.id ? 'text-primary' : 'text-foreground')}>
                   {theme.label}
                 </span>
-                {themeValue === theme.id && (
+                {themeValue === theme.id && !isUpdating && (
                   <div className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
                 )}
               </button>
