@@ -115,6 +115,25 @@ export default function BoardPage() {
   const [quickDates, setQuickDates] = React.useState<string | null>(null)
   const [quickCover, setQuickCover] = React.useState<{ cardId: string, anchorRect: DOMRect } | null>(null)
 
+  // Labels expanded state (Trello-style global toggle with persistence)
+  const [labelsExpanded, setLabelsExpanded] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`board-${boardId}-labels-expanded`) === 'true'
+    }
+    return false
+  })
+
+  // Persist labels expanded state to localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`board-${boardId}-labels-expanded`, String(labelsExpanded))
+    }
+  }, [labelsExpanded, boardId])
+
+  const handleToggleLabelsExpanded = React.useCallback(() => {
+    setLabelsExpanded(prev => !prev)
+  }, [])
+
   // Scroll hook
   const { ref: scrollRef, handleMouseDown, isDragging } = useDraggableScroll()
 
@@ -701,6 +720,8 @@ export default function BoardPage() {
                   activeCardContextMenuId={contextMenu?.cardId}
                   editingCardId={editingCardId}
                   onSetEditingCardId={setEditingCardId}
+                  labelsExpanded={labelsExpanded}
+                  onToggleLabelsExpanded={handleToggleLabelsExpanded}
                 />
               ))}
             </SortableContext>

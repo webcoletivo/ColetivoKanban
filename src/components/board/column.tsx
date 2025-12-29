@@ -43,6 +43,8 @@ interface ColumnProps {
   activeCardContextMenuId?: string | null
   editingCardId?: string | null
   onSetEditingCardId?: (cardId: string | null) => void
+  labelsExpanded?: boolean
+  onToggleLabelsExpanded?: () => void
 }
 
 export function Column({ 
@@ -53,7 +55,9 @@ export function Column({
   onCardQuickUpdate,
   activeCardContextMenuId,
   editingCardId,
-  onSetEditingCardId
+  onSetEditingCardId,
+  labelsExpanded,
+  onToggleLabelsExpanded
 }: ColumnProps) {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -240,6 +244,8 @@ export function Column({
               isActive={activeCardContextMenuId === card.id}
               isEditing={editingCardId === card.id}
               onSetEditing={(editing) => onSetEditingCardId?.(editing ? card.id : null)}
+              labelsExpanded={labelsExpanded}
+              onToggleLabelsExpanded={onToggleLabelsExpanded}
             />
           ))}
         </SortableContext>

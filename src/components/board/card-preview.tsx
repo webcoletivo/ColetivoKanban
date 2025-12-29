@@ -36,6 +36,8 @@ interface CardPreviewProps {
   isActive?: boolean
   isEditing?: boolean
   onSetEditing?: (editing: boolean) => void
+  labelsExpanded?: boolean
+  onToggleLabelsExpanded?: () => void
 }
 
 export function CardPreview({ 
@@ -48,7 +50,9 @@ export function CardPreview({
   isDragging: isDraggingProp,
   isActive,
   isEditing,
-  onSetEditing
+  onSetEditing,
+  labelsExpanded,
+  onToggleLabelsExpanded
 }: CardPreviewProps) {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
@@ -296,14 +300,34 @@ export function CardPreview({
             {/* Labels */}
             {card.labels.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
-                {card.labels.map((label) => (
-                  <span
-                    key={label.id}
-                    className="h-2 w-10 rounded-full"
-                    style={{ backgroundColor: label.color }}
-                    title={label.name}
-                  />
-                ))}
+                {card.labels.map((label) => {
+                  // Determine if text contrast should be light or dark
+                  const isLightBg = ['#eab308', '#22c55e', '#14b8a6'].includes(label.color.toLowerCase())
+                  return (
+                    <button
+                      key={label.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onToggleLabelsExpanded?.()
+                      }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className={cn(
+                        "rounded-full transition-all duration-200 cursor-pointer hover:opacity-80",
+                        labelsExpanded 
+                          ? "px-2 py-0.5 text-xs font-medium" 
+                          : "h-2 w-10"
+                      )}
+                      style={{ 
+                        backgroundColor: label.color,
+                        color: labelsExpanded ? (isLightBg ? '#1a1a1a' : '#ffffff') : undefined
+                      }}
+                      title={label.name}
+                    >
+                      {labelsExpanded ? label.name : null}
+                    </button>
+                  )
+                })}
               </div>
             )}
 
@@ -316,19 +340,17 @@ export function CardPreview({
               {card.title}
             </p>
 
-            {/* Template Badge */}
-            {card.isTemplate && (
-              <div className="flex items-center gap-1.5 mt-1.5 mb-2">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50">
-                  <LayoutTemplate className="h-3 w-3" />
-                  Este cartão é um template.
-                </span>
-              </div>
-            )}
-
             {/* Badges */}
-            {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0) && (
+            {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0 || card.isTemplate) && (
               <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                {/* Template Badge */}
+                {card.isTemplate && (
+                  <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                    <LayoutTemplate className="h-3 w-3" />
+                    Template
+                  </span>
+                )}
+
                 {/* Due Date */}
                 {hasDueDate && (
                   <span className={cn(
