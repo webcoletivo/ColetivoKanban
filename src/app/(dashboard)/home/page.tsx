@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { AvatarGroup } from '@/components/ui/avatar'
 import { BoardCardSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
-import { cn, formatDate } from '@/lib/utils'
+import { cn, formatDate, getAssetUrl } from '@/lib/utils'
 import { CreateBoardPopover } from '@/components/board/CreateBoardPopover'
 import { ImportTrelloModal } from '@/components/board/ImportTrelloModal'
 
@@ -22,10 +22,13 @@ interface Board {
   updatedAt: string
   cardCount: number
   backgroundImageUrl: string | null
+  backgroundImageKey: string | null
   members: Array<{
     id: string
     name: string
     avatarUrl: string | null
+    avatarKey: string | null
+    updatedAt: string
     role: string
   }>
   myRole: string
@@ -265,12 +268,12 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
       <Card 
         className={cn(
           "h-48 p-4 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden border-border/60 hover:border-primary/50",
-          board.backgroundImageUrl ? "bg-cover bg-center" : "bg-card"
+          (board.backgroundImageKey || board.backgroundImageUrl) ? "bg-cover bg-center" : "bg-card"
         )}
-        style={board.backgroundImageUrl ? { backgroundImage: `url("${board.backgroundImageUrl}")` } : undefined}
+        style={(board.backgroundImageKey || board.backgroundImageUrl) ? { backgroundImage: `url("${getAssetUrl(board.backgroundImageKey || board.backgroundImageUrl, board.updatedAt)}")` } : undefined}
       >
         {/* Overlay for background images */}
-        {board.backgroundImageUrl && (
+        {(board.backgroundImageKey || board.backgroundImageUrl) && (
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
         )}
 
@@ -281,7 +284,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
               {board.myRole === 'ADMIN' && (
                 <span className={cn(
                   "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border inline-block mb-1",
-                  board.backgroundImageUrl 
+                  (board.backgroundImageKey || board.backgroundImageUrl) 
                     ? "bg-white/20 text-white border-white/30 backdrop-blur-sm" 
                     : "bg-primary/10 text-primary border-primary/20"
                 )}>
@@ -296,7 +299,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
                 size="icon"
                 className={cn(
                   "h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity -mr-2 -mt-2",
-                  board.backgroundImageUrl 
+                  (board.backgroundImageKey || board.backgroundImageUrl) 
                     ? "text-white hover:bg-white/20 hover:text-white" 
                     : "text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                 )}
@@ -314,7 +317,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
           {/* Board Name */}
           <h3 className={cn(
             "font-bold text-lg mb-auto transition-colors tracking-tight line-clamp-2",
-            board.backgroundImageUrl ? "text-white" : "text-foreground group-hover:text-primary"
+            (board.backgroundImageKey || board.backgroundImageUrl) ? "text-white" : "text-foreground group-hover:text-primary"
           )}>
             {board.name}
           </h3>
@@ -323,7 +326,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
           <div className="mt-auto">
             <div className={cn(
               "flex items-center gap-4 text-xs mb-3 font-medium",
-              board.backgroundImageUrl ? "text-white/80" : "text-muted-foreground"
+              (board.backgroundImageKey || board.backgroundImageUrl) ? "text-white/80" : "text-muted-foreground"
             )}>
               <div className="flex items-center gap-1">
                 <LayoutGrid className="h-3.5 w-3.5" />
@@ -338,7 +341,7 @@ function BoardCard({ board, onDelete }: { board: Board; onDelete: () => void }) 
             <div className="flex items-center justify-between">
               <AvatarGroup
                 avatars={board.members.map((m) => ({
-                  src: m.avatarUrl,
+                  src: getAssetUrl(m.avatarKey || m.avatarUrl, m.updatedAt),
                   name: m.name,
                 }))}
                 max={4}

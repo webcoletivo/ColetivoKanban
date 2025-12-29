@@ -6,6 +6,7 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { Upload } from '@aws-sdk/lib-storage'
 import { Readable } from 'stream'
 
 // ============================================
@@ -124,7 +125,7 @@ export async function uploadBuffer(
  * Upload a readable stream to S3 (for large files)
  */
 export async function uploadStream(
-  stream: Readable,
+  stream: Readable | ReadableStream | Blob | string,
   storageKey: string,
   contentType: string,
   contentLength?: number,
@@ -132,24 +133,18 @@ export async function uploadStream(
 ): Promise<UploadResult> {
   const client = getS3Client()
 
-  // Convert stream to buffer for standard upload
-  // For very large files (>100MB), consider multipart upload
-  const chunks: Buffer[] = []
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  const buffer = Buffer.concat(chunks)
-
-  const command = new PutObjectCommand({
-    Bucket: S3_BUCKET,
-    Key: storageKey,
-    Body: buffer,
-    ContentType: contentType,
-    ContentLength: contentLength || buffer.length,
-    Metadata: metadata,
+  const upload = new Upload({
+    client,
+    params: {
+      Bucket: S3_BUCKET,
+      Key: storageKey,
+      Body: stream,
+      ContentType: contentType,
+      Metadata: metadata,
+    },
   })
 
-  const response = await client.send(command)
+  const response = await upload.done()
 
   return {
     storageKey,
@@ -166,10 +161,11 @@ export async function uploadFile(
   storageKey: string,
   metadata?: Record<string, string>
 ): Promise<UploadResult> {
-  const buffer = Buffer.from(await file.arrayBuffer())
   const contentType = file.type || 'application/octet-stream'
   
-  return uploadBuffer(buffer, storageKey, contentType, metadata)
+  // Use uploadStream ensures we handle large files via multipart upload
+  // and do not load the whole buffer into memory if the File object supports streaming
+  return uploadStream(file.stream(), storageKey, contentType, file.size, metadata)
 }
 
 // ============================================

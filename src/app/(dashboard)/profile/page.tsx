@@ -17,13 +17,15 @@ export default async function ProfilePage() {
     redirect('/login')
   }
 
-  const user = await prisma.user.findUnique({
+  const user = await (prisma.user as any).findUnique({
     where: { id: session.user.id },
     select: {
       name: true,
       email: true,
       avatarUrl: true,
+      avatarKey: true,
       createdAt: true,
+      updatedAt: true,
     },
   })
 
@@ -45,7 +47,9 @@ export default async function ProfilePage() {
             name: user.name,
             email: user.email,
             avatarUrl: user.avatarUrl,
+            avatarKey: (user as any).avatarKey,
             createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
           }} 
         />
         

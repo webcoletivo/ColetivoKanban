@@ -60,7 +60,7 @@ export async function GET(
         members: {
           include: {
             user: {
-              select: { id: true, name: true, email: true, avatarUrl: true },
+              select: { id: true, name: true, email: true, avatarUrl: true, avatarKey: true, updatedAt: true } as any,
             },
           },
         },
@@ -124,6 +124,9 @@ export async function GET(
         name: m.user.name,
         email: m.user.email,
         avatarUrl: m.user.avatarUrl,
+        // @ts-ignore
+        avatarKey: m.user.avatarKey,
+        updatedAt: m.user.updatedAt,
         role: m.role,
       })),
       labels: board.labels.map((l) => ({

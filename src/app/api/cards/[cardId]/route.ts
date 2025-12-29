@@ -45,14 +45,14 @@ export async function GET(
           where: { deletedAt: null },
           orderBy: { createdAt: 'desc' },
           include: {
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, avatarKey: true } as any },
           },
         },
         activities: {
           orderBy: { createdAt: 'desc' },
           take: 50,
           include: {
-            actor: { select: { id: true, name: true, avatarUrl: true } },
+            actor: { select: { id: true, name: true, avatarUrl: true, avatarKey: true } as any },
           },
         },
         createdBy: { select: { id: true, name: true } },
@@ -82,6 +82,7 @@ export async function GET(
       isCompleted: card.isCompleted,
       position: card.position,
       createdAt: card.createdAt,
+      updatedAt: card.updatedAt,
       createdBy: card.createdBy,
       column: card.column,
       labels: card.labels.map((cl) => ({
@@ -108,6 +109,7 @@ export async function GET(
         mimeType: a.mimeType,
         createdAt: a.createdAt,
         uploadedBy: a.uploadedBy,
+        storageKey: a.storageKey,
       })),
       comments: card.comments.map((c) => ({
         id: c.id,
@@ -125,6 +127,7 @@ export async function GET(
       coverType: (card as any).coverType,
       coverColor: (card as any).coverColor,
       coverImageUrl: (card as any).coverImageUrl,
+      coverImageKey: (card as any).coverImageKey,
       coverSize: (card as any).coverSize,
       isTemplate: (card as any).isTemplate || false,
       templateSourceCardId: (card as any).templateSourceCardId || null,
@@ -270,7 +273,9 @@ export async function PATCH(
       coverType: (updated as any).coverType,
       coverColor: (updated as any).coverColor,
       coverImageUrl: (updated as any).coverImageUrl,
+      coverImageKey: (updated as any).coverImageKey,
       coverSize: (updated as any).coverSize,
+      updatedAt: updated.updatedAt,
     })
   } catch (error: any) {
     fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] PATCH /api/cards/${cardId} Error: ${error.stack || error}\n`)

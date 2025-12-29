@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
-import { isUsingS3, deleteFile, STORAGE_DIRS, getFileUrl } from '@/lib/storage'
-import { uploadFile as s3UploadFile, generateStorageKey, S3_PREFIXES, deleteObject as s3DeleteObject } from '@/lib/s3'
-import { saveFile as localSaveFile } from '@/lib/storage'
+import { saveFile, deleteFile, STORAGE_DIRS, isUsingS3 } from '@/lib/storage'
+import { S3_PREFIXES, deleteObject as s3DeleteObject } from '@/lib/s3'
 import { v4 as uuidv4 } from 'uuid'
 
 // POST /api/cards/[cardId]/cover - Upload card cover image
@@ -69,24 +68,19 @@ export async function POST(
     }
 
     // Generate unique filename
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `${uuidv4()}.${fileExtension}`
-    
-    let storageKey: string
-    let coverImageUrl: string
 
-    if (isUsingS3()) {
-      // S3 Upload
-      storageKey = generateStorageKey(S3_PREFIXES.COVERS, cardId, fileName)
-      await s3UploadFile(file, storageKey)
-      // URL will be generated via API route, use placeholder
-      coverImageUrl = `/api/cards/${cardId}/cover/image`
-    } else {
-      // Local storage
-      const result = await localSaveFile(file, STORAGE_DIRS.COVERS, fileName, cardId)
-      storageKey = fileName // For local, just the filename
-      coverImageUrl = result.url
-    }
+    // Generate unique filename
+    const fileExtension = file.name.split('.').pop() || 'jpg'
+    const fileName = `${uuidv4()}.${fileExtension}`
+
+    // Unified Storage Save
+    // folder: covers, resourceId: cardId -> covers/cardId/filename
+    const { storageKey } = await saveFile(
+      file,
+      STORAGE_DIRS.COVERS,
+      fileName,
+      cardId
+    )
 
     // Update card
     const updatedCard = await (prisma.card as any).update({
@@ -107,7 +101,8 @@ export async function POST(
 
   } catch (error: any) {
     console.error('Upload cover error for cardId:', cardId, error)
-    return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Erro desconhecido'
+    return NextResponse.json({ error: 'Erro ao processar upload', details: message }, { status: 500 })
   }
 }
 

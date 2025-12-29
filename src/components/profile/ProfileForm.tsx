@@ -47,7 +47,9 @@ interface ProfileFormProps {
     name: string
     email: string
     avatarUrl?: string | null
+    avatarKey?: string | null
     createdAt: string
+    updatedAt: string
   }
 }
 
@@ -106,7 +108,9 @@ export function ProfileForm({ initialData }: ProfileFormProps) {
     <div className="space-y-6">
       {/* Avatar Section */}
       <AvatarUpload 
-        currentAvatarUrl={currentUser.avatarUrl} 
+        currentAvatarUrl={currentUser.avatarUrl}
+        currentAvatarKey={(currentUser as any).avatarKey}
+        updatedAt={(currentUser as any).updatedAt}
         name={currentUser.name} 
       />
 

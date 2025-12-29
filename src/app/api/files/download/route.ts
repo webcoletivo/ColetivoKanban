@@ -4,13 +4,13 @@ import { getFileUrl, isUsingS3, S3_PREFIXES } from "@/lib/storage";
 import { prisma } from "@/lib/prisma";
 import path from "path";
 import fs from "fs";
-import { getFileStats, getFilePath } from "@/lib/storage";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const key = searchParams.get("key");
+    const filenameArg = searchParams.get("filename");
 
     if (!key) {
       return new NextResponse("Missing key", { status: 400 });
@@ -19,76 +19,45 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     const user = session?.user;
 
-    // 1. Authentication check
     if (!user) {
        return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // 2. Authorization
+    // Authorization Logic (duplicated from inline)
     if (key.startsWith(S3_PREFIXES.AVATARS + "/")) {
-       // Allow logged in users to view avatars
+       // Allow
     } 
     else if (key.startsWith(S3_PREFIXES.BACKGROUNDS + "/")) {
         const parts = key.split("/");
-        // backgrounds/boardId/filename
         if (parts.length >= 2) {
             const boardId = parts[1];
-            
-            // Check board membership
             const member = await prisma.boardMember.findUnique({
-                where: {
-                    boardId_userId: {
-                        boardId,
-                        userId: user.id
-                    }
-                }
+                where: { boardId_userId: { boardId, userId: user.id } }
             });
-            
-            if (!member) {
-                // Also verify if user is the creator or if board is public/etc? 
-                // For now strict membership
-                return new NextResponse("Forbidden", { status: 403 });
-            }
+            if (!member) return new NextResponse("Forbidden", { status: 403 });
         }
     }
     else if (key.startsWith(S3_PREFIXES.COVERS + "/") || key.startsWith(S3_PREFIXES.ATTACHMENTS + "/")) {
          const parts = key.split("/");
-         // covers/cardId/filename
-         // attachments/cardId/filename
          if (parts.length >= 2) {
-             const resourceId = parts[1]; 
-             
-             // Ensure resourceId is valid UUID to avoid path traversal attacks if Local
-             // Though 'split' limits scope, verify it's a card ID
-             
+             const resourceId = parts[1];
              const card = await prisma.card.findUnique({
                  where: { id: resourceId },
                  select: { boardId: true }
              });
-             
-             if (!card) {
-                  return new NextResponse("Not Found", { status: 404 });
-             }
+             if (!card) return new NextResponse("Not Found", { status: 404 });
              
              const member = await prisma.boardMember.findUnique({
-                where: {
-                    boardId_userId: {
-                        boardId: card.boardId,
-                        userId: user.id
-                    }
-                }
+                where: { boardId_userId: { boardId: card.boardId, userId: user.id } }
             });
-            
-            if (!member) {
-                return new NextResponse("Forbidden", { status: 403 });
-            }
+            if (!member) return new NextResponse("Forbidden", { status: 403 });
          }
     }
 
-    // 3. Serve File
+    const downloadFilename = filenameArg || path.basename(key);
+
     if (isUsingS3()) {
         try {
-            // Using Proxy/Stream strategy
             const s3Client = new S3Client({
                 region: process.env.S3_REGION!,
                 endpoint: process.env.S3_ENDPOINT || undefined,
@@ -105,35 +74,27 @@ export async function GET(req: NextRequest) {
             });
 
             const response = await s3Client.send(command);
+            const encodedFilename = encodeURIComponent(downloadFilename);
             
             // @ts-ignore
             return new NextResponse(response.Body, {
                 headers: {
                     "Content-Type": response.ContentType || "application/octet-stream",
-                    "Cache-Control": "public, max-age=31536000, immutable", // Aggressive caching since we use versioning
-                    "ETag": response.ETag || "",
+                    "Content-Disposition": `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
+                    "Content-Length": response.ContentLength?.toString() || "",
                 },
             });
         } catch (error: any) {
-            console.error("S3 Stream Error:", error);
+            console.error("S3 Download Stream Error:", error);
             if (error.name === 'NoSuchKey') {
                  return new NextResponse("Not Found", { status: 404 });
             }
             return new NextResponse("Error fetching file", { status: 500 });
         }
     } else {
-        // Local: Stream file
-        // Key format: folder/resourceId/filename OR folder/filename
-        // We need to map key back to file system path
-        const parts = key.split('/');
-        const folder = parts[0];
-        const filename = parts[parts.length - 1];
-        
-        // For local storage, the key IS the relative path in uploads
-        // Verify file exists
         const filePath = path.join(process.cwd(), 'uploads', key);
         
-        // Basic Path Traversal Protection
+        // Path Traversal Check
         const resolvedPath = path.resolve(filePath);
         const uploadsRoot = path.resolve(process.cwd(), 'uploads');
         if (!resolvedPath.startsWith(uploadsRoot)) {
@@ -146,27 +107,19 @@ export async function GET(req: NextRequest) {
 
         const fileBuffer = fs.readFileSync(filePath);
         const stats = fs.statSync(filePath);
+        const encodedFilename = encodeURIComponent(downloadFilename);
         
-        // Determine Content Type
-        const ext = path.extname(filename).toLowerCase();
-        let contentType = "application/octet-stream";
-        if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
-        else if (ext === ".png") contentType = "image/png";
-        else if (ext === ".webp") contentType = "image/webp";
-        else if (ext === ".pdf") contentType = "application/pdf";
-        else if (ext === ".mp4") contentType = "video/mp4";
-
         return new NextResponse(fileBuffer, {
             headers: {
-                "Content-Type": contentType,
+                "Content-Type": "application/octet-stream",
                 "Content-Length": stats.size.toString(),
-                "Cache-Control": "public, max-age=31536000, immutable" // Aggressive caching
+                "Content-Disposition": `attachment; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`
             }
         });
     }
 
   } catch (error) {
-    console.error("[FILES_INLINE]", error);
+    console.error("[FILES_DOWNLOAD]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

@@ -13,13 +13,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await (prisma.user as any).findUnique({
       where: { id: session.user.id, deletedAt: null },
       select: {
         id: true,
         name: true,
         email: true,
         avatarUrl: true,
+        avatarKey: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -56,7 +57,7 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const user = await prisma.user.update({
+    const user = await (prisma.user as any).update({
       where: { id: session.user.id },
       data: result.data,
       select: {
@@ -64,6 +65,8 @@ export async function PATCH(request: Request) {
         name: true,
         email: true,
         avatarUrl: true,
+        avatarKey: true,
+        updatedAt: true,
       },
     })
 

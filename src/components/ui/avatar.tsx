@@ -70,8 +70,9 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
           onError={() => setImageError(true)}
         />
       ) : (
-        <span>{initials}</span>
+        <span suppressHydrationWarning>{initials}</span>
       )}
+
     </div>
   )
 }

@@ -41,6 +41,7 @@ interface CardData {
   archivedAt: string | null
   isCompleted: boolean
   createdAt: string
+  updatedAt: string 
   createdBy: { id: string; name: string }
   column: { id: string; title: string }
   labels: Array<{ id: string; name: string; color: string }>
@@ -429,12 +430,12 @@ export function CardModal({ cardId, boardId, boardLabels, onClose }: CardModalPr
         </div>
 
         {/* Card Cover Header */}
-        {card.coverType && card.coverType !== 'none' && (card.coverColor || card.coverImageUrl) && (
-          <div 
+        {card.coverType && card.coverType !== 'none' && (card.coverColor || card.coverImageUrl || card.coverImageKey) && (
+          <div  
             className="w-full h-32 md:h-40 shrink-0 relative bg-cover bg-center"
             style={{ 
               backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6',
-              backgroundImage: card.coverType === 'image' ? `url(${getAssetUrl(card.coverImageKey || card.coverImageUrl)})` : 'none',
+              backgroundImage: card.coverType === 'image' ? `url(${getAssetUrl(card.coverImageKey || card.coverImageUrl, card.updatedAt)})` : 'none',
             }}
           >
              {/* Small visual overlay if it's a light color for better close-button visibility */}

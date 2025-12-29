@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
-import { isUsingS3, deleteFile, STORAGE_DIRS, saveFile as localSaveFile } from '@/lib/storage'
-import { uploadFile as s3UploadFile, generateStorageKey, S3_PREFIXES, deleteObject as s3DeleteObject } from '@/lib/s3'
-import path from 'path'
+import { saveFile, deleteFile, STORAGE_DIRS, isUsingS3 } from '@/lib/storage'
+import { S3_PREFIXES, deleteObject as s3DeleteObject } from '@/lib/s3'
 import { v4 as uuidv4 } from 'uuid'
 
 // POST /api/boards/[boardId]/background - Upload board background
@@ -76,28 +75,20 @@ export async function POST(
     // Generate unique filename
     const fileExtension = file.name.split('.').pop() || 'jpg'
     const fileName = `${uuidv4()}.${fileExtension}`
-    
-    let storageKey: string
-    let backgroundImageUrl: string
 
-    if (isUsingS3()) {
-      // S3 Upload
-      storageKey = generateStorageKey(S3_PREFIXES.BACKGROUNDS, boardId, fileName)
-      await s3UploadFile(file, storageKey)
-      // URL will be generated via API route
-      backgroundImageUrl = `/api/boards/${boardId}/background/image`
-    } else {
-      // Local storage
-      const folder = path.join(STORAGE_DIRS.BOARDS, boardId)
-      const result = await localSaveFile(file, folder, fileName, boardId)
-      storageKey = `${boardId}/${fileName}`
-      backgroundImageUrl = result.url
-    }
+    // Unified Storage Save
+    // folder: backgrounds, resourceId: boardId -> backgrounds/boardId/filename
+    const { storageKey } = await saveFile(
+      file,
+      STORAGE_DIRS.BOARDS, // 'backgrounds'
+      fileName,
+      boardId
+    )
 
     const updatedBoard = await prisma.board.update({
       where: { id: boardId },
       data: {
-        backgroundImageUrl: null, // Clear URL to force usage of key/proxy
+        backgroundImageUrl: null, // Clear explicit URL to force key usage
         backgroundImageKey: storageKey,
       },
     })

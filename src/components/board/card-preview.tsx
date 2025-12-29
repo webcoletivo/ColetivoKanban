@@ -27,6 +27,7 @@ interface CardPreviewProps {
     coverImageKey?: string | null
     coverSize?: string | null
     isTemplate?: boolean
+    updatedAt: string 
   }
   onClick?: () => void
   onContextMenu?: (e: React.MouseEvent, cardId: string, cardRect: DOMRect) => void
@@ -159,7 +160,7 @@ export function CardPreview({
   const overdue = hasDueDate && !card.isCompleted && isOverdue(card.dueAt!)
   const dueToday = hasDueDate && !card.isCompleted && isDueToday(card.dueAt!)
 
-  const showCover = card.coverType !== 'none' && (card.coverColor || card.coverImageUrl)
+  const showCover = card.coverType !== 'none' && (card.coverColor || card.coverImageUrl || card.coverImageKey)
   const isFullCover = showCover && card.coverSize === 'full'
   const isImageCover = card.coverType === 'image' && !!(card.coverImageKey || card.coverImageUrl) && !imageError
   
@@ -202,7 +203,7 @@ export function CardPreview({
             <>
               {/* Using standard img for simplicity and onError support without Next/Image domain config */}
               <img 
-                src={getAssetUrl(card.coverImageKey || card.coverImageUrl)!} 
+                src={getAssetUrl(card.coverImageKey || card.coverImageUrl, card.updatedAt)!} 
                 alt="Cover"
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
@@ -223,7 +224,7 @@ export function CardPreview({
         >
           {isImageCover && (
             <img 
-              src={getAssetUrl(card.coverImageKey || card.coverImageUrl)!}
+              src={getAssetUrl(card.coverImageKey || card.coverImageUrl, card.updatedAt)!}
               alt="Cover"
               className="w-full h-full object-cover"
               onError={() => setImageError(true)}

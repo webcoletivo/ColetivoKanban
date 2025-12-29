@@ -66,23 +66,10 @@ export async function POST(
     let storageKey: string
     let bucket: string | undefined
 
-    if (isUsingS3()) {
-      // S3 Upload
-      storageKey = generateStorageKey(S3_PREFIXES.ATTACHMENTS, cardId, file.name)
-      const result = await s3UploadFile(file, storageKey)
-      bucket = result.bucket
-    } else {
-      // Local Storage
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads', cardId)
-      
-      await mkdir(uploadDir, { recursive: true })
-      await writeFile(path.join(uploadDir, filename), buffer)
-
-      // Storage key is path relative to public/uploads
-      storageKey = path.join(cardId, filename).replace(/\\/g, '/')
-    }
+    // Unified Upload
+    // saveFile handles S3/Local and returns consistent key
+    const result = await saveFile(file, STORAGE_DIRS.ATTACHMENTS, file.name, cardId)
+    storageKey = result.storageKey
 
     const attachment = await prisma.$transaction(async (tx: any) => {
       const newAttachment = await tx.attachment.create({
@@ -120,8 +107,9 @@ export async function POST(
       createdAt: attachment.createdAt,
       uploadedBy: attachment.uploadedBy,
     }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload attachment error:', error)
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Erro desconhecido'
+    return NextResponse.json({ error: 'Erro ao enviar anexo', details: message }, { status: 500 })
   }
 }

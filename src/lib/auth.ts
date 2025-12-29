@@ -10,6 +10,7 @@ declare module 'next-auth' {
       email: string
       name: string
       avatarUrl?: string | null
+      avatarKey?: string | null
     }
   }
   interface User {
@@ -17,6 +18,7 @@ declare module 'next-auth' {
     email: string
     name: string
     avatarUrl?: string | null
+    avatarKey?: string | null
   }
 }
 
@@ -55,6 +57,7 @@ export const authConfig: NextAuthConfig = {
           email: user.email,
           name: user.name,
           avatarUrl: user.avatarUrl,
+          avatarKey: user.avatarKey,
         }
       },
     }),
@@ -66,6 +69,7 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email
         token.name = user.name
         token.avatarUrl = user.avatarUrl
+        token.avatarKey = user.avatarKey
       }
       return token
     },
@@ -75,6 +79,7 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string
         session.user.name = token.name as string
         session.user.avatarUrl = token.avatarUrl as string | null | undefined
+        session.user.avatarKey = token.avatarKey as string | null | undefined
       }
       return session
     },

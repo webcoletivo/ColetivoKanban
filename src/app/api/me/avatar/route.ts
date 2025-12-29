@@ -29,27 +29,49 @@ export async function POST(request: NextRequest) {
     const filename = `avatar-${session.user.id}-${Date.now()}${path.extname(file.name)}`
     
     // Get old avatar to delete if exists
-    const user = await prisma.user.findUnique({
+    // Get old avatar to delete if exists
+    const user = await (prisma.user as any).findUnique({
       where: { id: session.user.id },
-      select: { avatarUrl: true }
+      select: { avatarKey: true, avatarUrl: true }
     })
 
-    if (user?.avatarUrl) {
-      // Check if it's a local upload (matches new or old pattern)
-      if (user.avatarUrl.includes('/uploads/avatars/')) {
-        const oldFilename = path.basename(user.avatarUrl)
-        await deleteFile(STORAGE_DIRS.AVATARS, oldFilename)
+    // Delete old file
+    if (user?.avatarKey) {
+      try {
+        await deleteFile(STORAGE_DIRS.AVATARS, user.avatarKey)
+      } catch (e) {
+        console.error('Error deleting old avatar:', e)
       }
+    } else if (user?.avatarUrl && user.avatarUrl.includes('/uploads/')) {
+        // Fallback for legacy local files
+        try {
+            const oldFilename = path.basename(user.avatarUrl)
+            await deleteFile(STORAGE_DIRS.AVATARS, oldFilename)
+        } catch (e) {
+             console.error('Error deleting legacy avatar:', e)
+        }
     }
 
     const { storageKey } = await saveFile(file, STORAGE_DIRS.AVATARS, filename)
 
-    await prisma.user.update({
+    await (prisma.user as any).update({
       where: { id: session.user.id },
-      data: { avatarUrl: storageKey },
+      data: { 
+        avatarKey: storageKey,
+        avatarUrl: null 
+      },
     })
+    
+    // Deletion Handler
+    // ...
+    // Note: The delete handler below also needs fixing if it uses avatarKey
 
-    return NextResponse.json({ avatarUrl: `/api/files/inline?key=${storageKey}` })
+
+    return NextResponse.json({ 
+      success: true,
+      avatarKey: storageKey,
+      url: `/api/files/inline?key=${storageKey}`
+    })
   } catch (error) {
     console.error('Avatar upload error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
@@ -64,21 +86,25 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await (prisma.user as any).findUnique({
       where: { id: session.user.id },
-      select: { avatarUrl: true }
+      select: { avatarKey: true, avatarUrl: true }
     })
 
-    if (user?.avatarUrl) {
-       if (user.avatarUrl.includes('/uploads/avatars/')) {
+    if (user?.avatarKey) {
+        try {
+            await deleteFile(STORAGE_DIRS.AVATARS, user.avatarKey)
+        } catch (e) { console.error(e) }
+    } else if (user?.avatarUrl && user.avatarUrl.includes('/uploads/')) {
         const oldFilename = path.basename(user.avatarUrl)
-        await deleteFile(STORAGE_DIRS.AVATARS, oldFilename)
-      }
+        try {
+            await deleteFile(STORAGE_DIRS.AVATARS, oldFilename)
+        } catch (e) { console.error(e) }
     }
 
-    await prisma.user.update({
+    await (prisma.user as any).update({
       where: { id: session.user.id },
-      data: { avatarUrl: null },
+      data: { avatarUrl: null, avatarKey: null },
     })
 
     return NextResponse.json({ success: true })

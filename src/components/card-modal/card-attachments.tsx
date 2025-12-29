@@ -16,6 +16,7 @@ interface Attachment {
   mimeType: string
   createdAt: string
   uploadedBy: { id: string; name: string }
+  storageKey?: string
 }
 
 interface CardAttachmentsProps {
@@ -149,10 +150,12 @@ export function CardAttachments({ cardId, boardId, attachments }: CardAttachment
     e.target.value = ''
   }
 
-  const handleDownload = async (attachmentId: string, fileName: string) => {
+  const handleDownload = async (attachmentId: string, fileName: string, storageKey?: string) => {
     // Direct download by creating a temporary link - no need for fetch + blob for simple files
     const a = document.createElement('a')
-    a.href = `/api/attachments/${attachmentId}/download`
+    a.href = storageKey 
+      ? `/api/files/download?key=${storageKey}&filename=${encodeURIComponent(fileName)}`
+      : `/api/attachments/${attachmentId}/download`
     a.download = fileName
     document.body.appendChild(a)
     a.click()
@@ -236,7 +239,7 @@ export function CardAttachments({ cardId, boardId, attachments }: CardAttachment
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => handleDownload(attachment.id, attachment.fileName)}
+                    onClick={() => handleDownload(attachment.id, attachment.fileName, attachment.storageKey)}
                     className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                     title="Baixar"
                   >
@@ -271,7 +274,7 @@ export function CardAttachments({ cardId, boardId, attachments }: CardAttachment
           isOpen={!!previewAttachment}
           onClose={() => setPreviewAttachment(null)}
           attachment={previewAttachment}
-          onDownload={handleDownload}
+          onDownload={(id, name) => handleDownload(id, name, previewAttachment?.storageKey)}
           onDelete={(att) => {
             setPreviewAttachment(null)
             setAttachmentToDelete(att)

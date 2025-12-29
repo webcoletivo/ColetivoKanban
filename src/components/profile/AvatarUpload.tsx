@@ -6,14 +6,16 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { cn } from '@/lib/utils'
+import { cn, getAssetUrl } from '@/lib/utils'
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string | null
+  currentAvatarKey?: string | null
+  updatedAt?: string | Date
   name: string
 }
 
-export function AvatarUpload({ currentAvatarUrl, name }: AvatarUploadProps) {
+export function AvatarUpload({ currentAvatarUrl, currentAvatarKey, updatedAt, name }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = React.useState(false)
   const [isDragging, setIsDragging] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -110,7 +112,7 @@ export function AvatarUpload({ currentAvatarUrl, name }: AvatarUploadProps) {
         onClick={() => fileInputRef.current?.click()}
       >
         <Avatar 
-          src={currentAvatarUrl} 
+          src={getAssetUrl(currentAvatarKey || currentAvatarUrl, updatedAt)} 
           name={name} 
           size="xl" 
           className="h-24 w-24 ring-4 ring-background shadow-lg"

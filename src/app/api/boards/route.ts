@@ -23,7 +23,13 @@ export async function GET() {
         members: {
           include: {
             user: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { 
+                id: true, 
+                name: true, 
+                avatarUrl: true,
+                avatarKey: true,
+                updatedAt: true
+              },
             },
           },
         },
@@ -35,20 +41,24 @@ export async function GET() {
     })
 
     // Format response
-    const formattedBoards = boards.map((board) => ({
+    // Format response
+    const formattedBoards = (boards as any).map((board: any) => ({
       id: board.id,
       name: board.name,
       createdAt: board.createdAt,
       updatedAt: board.updatedAt,
       backgroundImageUrl: board.backgroundImageUrl,
+      backgroundImageKey: board.backgroundImageKey,
       cardCount: board._count.cards,
-      members: board.members.map((m) => ({
+      members: board.members.map((m: any) => ({
         id: m.user.id,
         name: m.user.name,
         avatarUrl: m.user.avatarUrl,
+        avatarKey: m.user.avatarKey,
+        updatedAt: m.user.updatedAt,
         role: m.role,
       })),
-      myRole: board.members.find((m) => m.userId === session.user.id)?.role,
+      myRole: board.members.find((m: any) => m.userId === session.user.id)?.role,
     }))
 
     return NextResponse.json(formattedBoards)
@@ -94,7 +104,13 @@ export async function POST(request: Request) {
         members: {
           include: {
             user: {
-              select: { id: true, name: true, avatarUrl: true },
+              select: { 
+                id: true, 
+                name: true, 
+                avatarUrl: true,
+                avatarKey: true,
+                updatedAt: true
+              },
             },
           },
         },
@@ -109,6 +125,8 @@ export async function POST(request: Request) {
         id: m.user.id,
         name: m.user.name,
         avatarUrl: m.user.avatarUrl,
+        avatarKey: (m.user as any).avatarKey,
+        updatedAt: (m.user as any).updatedAt,
         role: m.role,
       })),
       myRole: 'ADMIN',

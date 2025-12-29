@@ -50,7 +50,9 @@ interface Card {
   coverType: string | null
   coverColor: string | null
   coverImageUrl: string | null
+  coverImageKey: string | null
   coverSize: string | null
+  updatedAt: string 
 }
 
 interface ColumnData {
@@ -72,11 +74,17 @@ interface BoardData {
     name: string
     email: string
     avatarUrl: string | null
+    avatarKey: string | null
+    updatedAt: string 
     role: string
   }>
   labels: Array<{ id: string; name: string; color: string }>
   backgroundImageUrl: string | null
+  backgroundImageKey: string | null
+  updatedAt: string
 }
+
+import { getAssetUrl } from '@/lib/utils'
 
 async function fetchBoard(boardId: string): Promise<BoardData> {
   const res = await fetch(`/api/boards/${boardId}`)
@@ -622,8 +630,8 @@ export default function BoardPage() {
   return (
     <div 
       className="h-[calc(100vh-64px)] flex flex-col relative bg-cover bg-center bg-no-repeat transition-all duration-700"
-      style={board.backgroundImageUrl ? { 
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url("${board.backgroundImageUrl}")` 
+      style={board.backgroundImageKey || board.backgroundImageUrl ? { 
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url("${getAssetUrl(board.backgroundImageKey || board.backgroundImageUrl, board.updatedAt)}")` 
       } : undefined}
     >
       {/* Global Focus Backdrop */}
@@ -643,7 +651,9 @@ export default function BoardPage() {
             ...m,
             role: m.role as string
           })),
-          backgroundImageUrl: board.backgroundImageUrl
+          backgroundImageUrl: board.backgroundImageUrl,
+          backgroundImageKey: board.backgroundImageKey,
+          updatedAt: board.updatedAt
         }} 
         onOpenCard={setSelectedCardId}
       />

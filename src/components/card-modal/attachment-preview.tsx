@@ -28,6 +28,7 @@ interface Attachment {
   mimeType: string
   createdAt: string
   uploadedBy: { id: string; name: string }
+  storageKey?: string
 }
 
 interface AttachmentPreviewProps {
@@ -64,8 +65,13 @@ export function AttachmentPreview({
   const isPdf = attachment.mimeType === 'application/pdf'
   const isVideo = attachment.mimeType.startsWith('video/')
   const isAudio = attachment.mimeType.startsWith('audio/')
-  const downloadUrl = `/api/attachments/${attachment.id}/download`
-  const inlineUrl = `/api/attachments/${attachment.id}/inline`
+  const downloadUrl = attachment.storageKey 
+    ? `/api/files/download?key=${attachment.storageKey}`
+    : `/api/attachments/${attachment.id}/download`
+  
+  const inlineUrl = attachment.storageKey
+    ? `/api/files/inline?key=${attachment.storageKey}&v=${new Date(attachment.createdAt).getTime()}`
+    : `/api/attachments/${attachment.id}/inline`
 
   // Reset zoom and position when attachment changes or modal opens
   React.useEffect(() => {

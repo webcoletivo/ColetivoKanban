@@ -22,7 +22,7 @@ import {
 const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
 
 export const STORAGE_DIRS = {
-  BOARDS: 'boards',
+  BOARDS: 'backgrounds',
   COVERS: 'covers',
   AVATARS: 'avatars',
   ATTACHMENTS: 'attachments'
@@ -65,12 +65,16 @@ async function ensureDir(dir: string) {
 async function saveFileLocal(
   file: File | Buffer, 
   folder: string, 
-  filename: string
+  filename: string,
+  resourceId?: string
 ): Promise<{ path: string; url: string; relativePath: string; storageKey: string }> {
   const bytes = file instanceof File ? await file.arrayBuffer() : file
   const buffer = Buffer.from(bytes as ArrayBuffer)
 
-  const uploadDir = path.join(UPLOAD_ROOT, folder)
+  // If resourceId is provided, nest it: folder/resourceId
+  // Otherwise just folder
+  const targetFolder = resourceId ? path.join(folder, resourceId) : folder
+  const uploadDir = path.join(UPLOAD_ROOT, targetFolder)
   await ensureDir(uploadDir)
 
   const filePath = path.join(uploadDir, filename)
@@ -78,8 +82,16 @@ async function saveFileLocal(
 
   // URL should be the API route that serves this file
   // local path relative to UPLOAD_ROOT
-  const relativePath = path.join(folder, filename).replace(/\\/g, '/')
+  // We ensure forward slashes for keys/urls
+  const relativePath = path.join(targetFolder, filename).replace(/\\/g, '/')
+  
+  // The proxy will serve this via /api/files/inline?key=...
+  // But strictly speaking, the URL returned here might be used by legacy code.
+  // We should prefer returning the proxy URL structure if possible, but saveFile is generic.
+  // Let's stick to the direct path capability for legacy, but the key is what matters.
   const url = `/api/uploads/${relativePath}`
+  
+  // Storage Key MUST be unified: folder/resourceId/filename (or folder/filename)
   const storageKey = relativePath
 
   return { path: filePath, url, relativePath, storageKey }
@@ -142,7 +154,7 @@ export async function saveFile(
     }
   } else {
     // Use local storage
-    const result = await saveFileLocal(file, folder, filename)
+    const result = await saveFileLocal(file, folder, filename, resourceId)
     return {
       storageKey: result.storageKey,
       url: result.url,

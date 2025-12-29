@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { Kanban, User, LogOut, ChevronDown, Settings, Home } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
-import { cn } from '@/lib/utils'
+import { cn, getAssetUrl } from '@/lib/utils'
 
 import { useCurrentUser } from '@/hooks/use-current-user'
 
@@ -16,6 +16,7 @@ interface HeaderProps {
     name: string
     email: string
     avatarUrl?: string | null
+    avatarKey?: string | null
   }
 }
 
@@ -66,7 +67,7 @@ export function DashboardHeader({ user: initialUser }: HeaderProps) {
               className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/50"
             >
               <Avatar 
-                src={currentUser.avatarUrl} 
+                src={getAssetUrl(currentUser.avatarKey || currentUser.avatarUrl)} 
                 name={currentUser.name} 
                 size="sm" 
               />

@@ -21,6 +21,8 @@ interface BoardHeaderProps {
       name: string
       email: string
       avatarUrl: string | null
+      avatarKey?: string | null
+      updatedAt: string | Date
       role: string
     }>
     backgroundImageUrl?: string | null
@@ -189,7 +191,7 @@ export function BoardHeader({ board, onOpenCard }: BoardHeaderProps) {
         >
           <AvatarGroup
             avatars={board.members.map((m) => ({
-              src: getAssetUrl(m.avatarUrl),
+              src: getAssetUrl(m.avatarKey || m.avatarUrl, m.updatedAt),
               name: m.name,
             }))}
             max={3}

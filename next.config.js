@@ -2,12 +2,13 @@
 const nextConfig = {
   output: 'standalone',
   // Strict checks enabled
+
+  // Allow large uploads
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000'],
+      bodySizeLimit: '300mb',
     },
   },
-  
   // Allow external images from YouTube thumbnails
   images: {
     remotePatterns: [
@@ -26,32 +27,15 @@ const nextConfig = {
         hostname: 'www.google.com',
         pathname: '/s2/favicons**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
+      },
     ],
   },
 
   // Security headers - allow YouTube embeds
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://i.ytimg.com https://img.youtube.com https://www.google.com https://*.googleusercontent.com",
-              "font-src 'self' data: https://fonts.gstatic.com",
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com",
-              "connect-src 'self' https://*.googleapis.com https://*.google.com",
-              "media-src 'self' https://www.youtube.com",
-            ].join('; '),
-          },
-        ],
-      },
-    ]
-  },
+
 }
 
 module.exports = nextConfig
