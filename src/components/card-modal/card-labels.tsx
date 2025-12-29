@@ -131,23 +131,33 @@ export function CardLabelPicker({
 
       {/* Existing Labels */}
       <div className="space-y-1 mb-3">
-        {boardLabels.map((label) => (
-          <button
-            key={label.id}
-            onClick={() => handleToggleLabel(label.id)}
-            className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            <span
-              className="flex-1 h-8 rounded flex items-center px-3 text-white text-sm font-medium"
-              style={{ backgroundColor: label.color }}
+        {boardLabels.map((label) => {
+          const colorLower = label.color.toLowerCase()
+          const isDarkColor = ['#344563', '#000000', '#1a1a1a', '#0f0f0f', '#111111'].includes(colorLower) || colorLower.startsWith('#1') || colorLower.startsWith('#2') || colorLower.startsWith('#3')
+          return (
+            <button
+              key={label.id}
+              onClick={() => handleToggleLabel(label.id)}
+              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
-              {label.name}
-            </span>
-            {assignedIds.has(label.id) && (
-              <Check className="h-4 w-4 text-green-500" />
-            )}
-          </button>
-        ))}
+              <span
+                className={cn(
+                  "flex-1 h-8 rounded flex items-center px-3 text-white text-sm font-medium",
+                  isDarkColor && "ring-1 ring-inset ring-white/20"
+                )}
+                style={{ 
+                  backgroundColor: label.color,
+                  boxShadow: isDarkColor ? 'inset 0 0 0 1px rgba(255,255,255,0.2)' : undefined
+                }}
+              >
+                {label.name}
+              </span>
+              {assignedIds.has(label.id) && (
+                <Check className="h-4 w-4 text-green-500" />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* Create New Label */}
@@ -240,15 +250,25 @@ export function CardLabels({
       {/* Assigned Labels */}
       {cardLabels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
-          {cardLabels.map((label) => (
-            <span
-              key={label.id}
-              className="px-2 py-1 rounded text-xs font-medium text-white"
-              style={{ backgroundColor: label.color }}
-            >
-              {label.name}
-            </span>
-          ))}
+          {cardLabels.map((label) => {
+            const colorLower = label.color.toLowerCase()
+            const isDarkColor = ['#344563', '#000000', '#1a1a1a', '#0f0f0f', '#111111'].includes(colorLower) || colorLower.startsWith('#1') || colorLower.startsWith('#2') || colorLower.startsWith('#3')
+            return (
+              <span
+                key={label.id}
+                className={cn(
+                  "px-2 py-1 rounded text-xs font-medium text-white",
+                  isDarkColor && "ring-1 ring-inset ring-white/20"
+                )}
+                style={{ 
+                  backgroundColor: label.color,
+                  boxShadow: isDarkColor ? 'inset 0 0 0 1px rgba(255,255,255,0.2)' : undefined
+                }}
+              >
+                {label.name}
+              </span>
+            )
+          })}
           {!onOpenPicker && (
             <button
               onClick={() => setShowPicker(true)}

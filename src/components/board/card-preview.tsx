@@ -302,7 +302,11 @@ export function CardPreview({
               <div className="flex flex-wrap gap-1 mb-2">
                 {card.labels.map((label) => {
                   // Determine if text contrast should be light or dark
-                  const isLightBg = ['#eab308', '#22c55e', '#14b8a6'].includes(label.color.toLowerCase())
+                  const colorLower = label.color.toLowerCase()
+                  const isLightBg = ['#eab308', '#22c55e', '#14b8a6'].includes(colorLower)
+                  // Dark colors that need special treatment for visibility
+                  const isDarkColor = ['#344563', '#000000', '#1a1a1a', '#0f0f0f', '#111111'].includes(colorLower) || colorLower.startsWith('#1') || colorLower.startsWith('#2') || colorLower.startsWith('#3')
+                  
                   return (
                     <button
                       key={label.id}
@@ -316,11 +320,15 @@ export function CardPreview({
                         "rounded-full transition-all duration-200 cursor-pointer hover:opacity-80",
                         labelsExpanded 
                           ? "px-2 py-0.5 text-xs font-medium" 
-                          : "h-2 w-10"
+                          : "h-2 w-10",
+                        // Add subtle highlight for dark labels
+                        isDarkColor && "ring-1 ring-inset ring-white/20 dark:ring-white/30"
                       )}
                       style={{ 
                         backgroundColor: label.color,
-                        color: labelsExpanded ? (isLightBg ? '#1a1a1a' : '#ffffff') : undefined
+                        color: labelsExpanded ? (isLightBg ? '#1a1a1a' : '#ffffff') : undefined,
+                        // Add inner glow for dark colors
+                        boxShadow: isDarkColor ? 'inset 0 0 0 1px rgba(255,255,255,0.15)' : undefined
                       }}
                       title={label.name}
                     >

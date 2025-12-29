@@ -117,6 +117,8 @@ export async function GET(
           coverImageUrl: card.coverImageUrl,
           coverImageKey: card.coverImageKey,
           coverSize: card.coverSize,
+          isTemplate: (card as any).isTemplate || false,
+          updatedAt: card.updatedAt,
         })),
       })),
       members: board.members.map((m) => ({

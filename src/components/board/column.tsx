@@ -26,6 +26,7 @@ interface Card {
   coverColor: string | null
   coverImageUrl: string | null
   coverImageKey: string | null
+  isTemplate?: boolean
   updatedAt: string 
 }
 

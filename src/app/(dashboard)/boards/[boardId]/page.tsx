@@ -52,6 +52,7 @@ interface Card {
   coverImageUrl: string | null
   coverImageKey: string | null
   coverSize: string | null
+  isTemplate?: boolean
   updatedAt: string 
 }
 
