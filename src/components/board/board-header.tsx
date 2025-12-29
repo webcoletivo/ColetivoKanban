@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Search, Users, MoreHorizontal, Pencil, Trash2, Image as ImageIcon, X, Upload, Loader2 } from 'lucide-react'
-import { AvatarGroup } from '@/components/ui/avatar'
+import { Avatar, AvatarGroup } from '@/components/ui/avatar'
 import { Modal, ModalHeader } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -382,7 +382,7 @@ function MembersModal({
     ownerId: string;
     myUserId: string;
     myRole: string; 
-    members: Array<{ id: string; name: string; email: string; avatarUrl: string | null; role: string }> 
+    members: Array<{ id: string; name: string; email: string; avatarUrl: string | null; avatarKey?: string | null; updatedAt?: string | Date; role: string }> 
   }
 }) {
   const queryClient = useQueryClient()
@@ -526,14 +526,14 @@ function MembersModal({
                   key={member.id}
                   className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg hover:bg-secondary/40 transition-colors border border-transparent hover:border-border/50 group"
                 >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {member.avatarUrl ? (
-                      <img src={member.avatarUrl} alt={member.name} className="w-10 h-10 rounded-full object-cover border border-border shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium border border-blue-600/20 shadow-sm shrink-0">
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Avatar 
+                      src={member.avatarUrl}
+                      avatarKey={member.avatarKey}
+                      name={member.name}
+                      size="md"
+                      updatedAt={member.updatedAt}
+                    />
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-foreground truncate max-w-full">

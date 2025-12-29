@@ -166,6 +166,7 @@ export function CardPreview({
 
   const showCover = card.coverType !== 'none' && (card.coverColor || card.coverImageUrl || card.coverImageKey)
   const isFullCover = showCover && card.coverSize === 'full'
+  const isBlockCover = showCover && (!card.coverSize || card.coverSize === 'block')
   const isImageCover = card.coverType === 'image' && !!(card.coverImageKey || card.coverImageUrl) && !imageError
   
   // Decide background color for full cover (fallback or color mode)
@@ -193,7 +194,7 @@ export function CardPreview({
         isActive && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_20px_rgba(0,0,0,0.3)] dark:shadow-[0_0_30px_rgba(0,0,0,0.5)]',
         isEditing && 'z-50 ring-2 ring-primary border-primary shadow-[0_0_25px_rgba(0,0,0,0.4)]',
         card.isCompleted && 'opacity-60',
-        isFullCover && 'text-white border-0' // Full cover text style
+        isFullCover && 'h-[95px] text-white border-0' // Fixed height for full cover
       )}
       style={style}
     >
@@ -218,10 +219,13 @@ export function CardPreview({
         </div>
       )}
 
-      {/* Strip Cover (32px fixed height) */}
+      {/* Strip Cover (32px for color, 101px for image) */}
       {showCover && card.coverSize === 'strip' && (
         <div 
-          className="w-full h-[32px] relative overflow-hidden" 
+          className={cn(
+            "w-full relative overflow-hidden",
+            isImageCover ? "h-[101px]" : "h-[32px]"
+          )}
           style={{ 
             backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6'
           }}
@@ -237,8 +241,33 @@ export function CardPreview({
         </div>
       )}
 
+      {/* Block Cover (101px fixed height - title below) */}
+      {showCover && isBlockCover && (
+        <div 
+          className="w-full relative overflow-hidden rounded-t-lg shrink-0" 
+          style={{ 
+            height: '101px',
+            minHeight: '101px',
+            maxHeight: '101px',
+            backgroundColor: card.coverType === 'color' ? card.coverColor || '#dfe1e6' : '#dfe1e6'
+          }}
+        >
+          {isImageCover && (
+            <img 
+              src={getAssetUrl(card.coverImageKey || card.coverImageUrl, card.updatedAt)!}
+              alt="Cover"
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          )}
+        </div>
+      )}
+
       {/* Card Content Area */}
-      <div className="p-3 relative">
+      <div className={cn(
+        'p-3 relative',
+        isFullCover && 'absolute inset-0 flex flex-col justify-end z-10'
+      )}>
         {/* Quick Edit Overlay */}
         {isEditing && (
           <div 
@@ -269,8 +298,8 @@ export function CardPreview({
         )}
 
         <div className="flex items-start gap-2">
-          {/* Checkbox Column */}
-          {!isEditing && (
+          {/* Checkbox Column - Hidden in full cover */}
+          {!isEditing && !isFullCover && (
             <div 
               className={cn(
                 "shrink-0 flex flex-col pt-0.5 transition-all duration-200 ease-in-out overflow-hidden",
@@ -297,8 +326,8 @@ export function CardPreview({
 
           {/* Main Content Column */}
           <div className="flex-1 min-w-0">
-            {/* Labels */}
-            {card.labels.length > 0 && (
+            {/* Labels - Hidden in full cover */}
+            {card.labels.length > 0 && !isFullCover && (
               <div className="flex flex-wrap gap-1 mb-2">
                 {card.labels.map((label) => {
                   // Determine if text contrast should be light or dark
@@ -348,8 +377,8 @@ export function CardPreview({
               {card.title}
             </p>
 
-            {/* Badges */}
-            {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0 || card.isTemplate) && (
+            {/* Badges - Hidden in full cover */}
+            {(hasDueDate || hasChecklist || card.commentCount > 0 || card.attachmentCount > 0 || card.isTemplate) && !isFullCover && (
               <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
                 {/* Template Badge */}
                 {card.isTemplate && (

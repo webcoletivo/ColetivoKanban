@@ -155,7 +155,7 @@ export function Column({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex-shrink-0 w-72 bg-muted/40 rounded-xl flex flex-col max-h-[calc(100vh-140px)] border border-border/40',
+        'flex-shrink-0 w-72 bg-muted/90 dark:bg-muted/50 rounded-xl flex flex-col max-h-[calc(100vh-140px)] border border-border shadow-sm backdrop-blur-sm',
         isDragging && 'opacity-50 ring-2 ring-primary rotate-2'
       )}
     >

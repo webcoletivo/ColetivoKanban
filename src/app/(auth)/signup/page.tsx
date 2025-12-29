@@ -69,12 +69,9 @@ function SignupForm() {
       if (result?.error) {
         router.push('/login')
       } else {
-        // If there was an invite token, go directly to accept it
-        if (inviteToken) {
-          router.push(`/invite/${inviteToken}`)
-        } else {
-          router.push('/home')
-        }
+        // Always go to home after successful signup
+        // Invitations are processed automatically by the signup API
+        router.push('/home')
         router.refresh()
       }
     } catch {

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { moveCardSchema } from '@/lib/validations'
 import { requireBoardPermission, PermissionError } from '@/lib/permissions'
 import { checkAndExecuteAutomations } from '@/lib/automation'
+import { boardEvents } from '@/lib/events'
 
 // POST /api/cards/[cardId]/move - Move card to another column
 export async function POST(
@@ -117,10 +118,24 @@ export async function POST(
        }
     }
 
+    // Emit real-time event
+    boardEvents.emit(`board:${card.boardId}`, {
+      type: 'card.moved',
+      payload: {
+        cardId,
+        columnId,
+        position,
+        boardId: targetBoardId,
+        moverId: session.user.id,
+        updatedAt: new Date().toISOString()
+      }
+    })
+
     return NextResponse.json({
       id: cardId,
       columnId,
       position,
+      updatedAt: new Date().toISOString() // Return updatedAt for consistency
     })
   } catch (error) {
     console.error('Move card error:', error)

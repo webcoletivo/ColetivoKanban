@@ -10,12 +10,13 @@ import { useToast } from '@/components/ui/toast'
 import { formatDateTime } from '@/lib/utils'
 import { RichTextEditor, RichTextDisplay } from '@/components/ui/rich-text-editor'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
 interface Comment {
   id: string
   content: string
   createdAt: string
-  user: { id: string; name: string; avatarUrl: string | null }
+  user: { id: string; name: string; avatarUrl: string | null; avatarKey?: string | null }
 }
 
 interface CardCommentsProps {
@@ -27,6 +28,7 @@ interface CardCommentsProps {
 export function CardComments({ cardId, boardId, comments }: CardCommentsProps) {
   const queryClient = useQueryClient()
   const { data: session } = useSession()
+  const { data: currentUser } = useCurrentUser()
   const { addToast } = useToast()
   const [content, setContent] = React.useState('')
   const [isExpanded, setIsExpanded] = React.useState(false)
@@ -185,9 +187,11 @@ export function CardComments({ cardId, boardId, comments }: CardCommentsProps) {
             className="flex items-center gap-3 p-2 bg-secondary/30 border border-transparent hover:bg-secondary/50 rounded-lg cursor-pointer transition-colors shadow-sm"
           >
             <Avatar 
-              src={session?.user?.avatarUrl} 
-              name={session?.user?.name || 'User'} 
+              src={currentUser?.avatarUrl || session?.user?.avatarUrl} 
+              avatarKey={currentUser?.avatarKey}
+              name={currentUser?.name || session?.user?.name || 'User'} 
               size="sm" 
+              updatedAt={currentUser?.updatedAt}
             />
             <span className="text-sm text-muted-foreground">Escrever um comentário...</span>
           </div>
@@ -201,6 +205,7 @@ export function CardComments({ cardId, boardId, comments }: CardCommentsProps) {
             <div key={comment.id} className="flex gap-3 group">
               <Avatar
                 src={comment.user.avatarUrl}
+                avatarKey={comment.user.avatarKey}
                 name={comment.user.name}
                 size="sm"
               />

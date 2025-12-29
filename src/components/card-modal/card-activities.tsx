@@ -10,7 +10,7 @@ interface ActivityItem {
   type: string
   payload: Record<string, unknown>
   createdAt: string
-  actor: { id: string; name: string; avatarUrl: string | null } | null
+  actor: { id: string; name: string; avatarUrl: string | null; avatarKey?: string | null } | null
 }
 
 interface CardActivitiesProps {
@@ -118,6 +118,7 @@ export function CardActivities({ activities }: CardActivitiesProps) {
               {activity.actor ? (
                 <Avatar
                   src={activity.actor.avatarUrl}
+                  avatarKey={activity.actor.avatarKey}
                   name={activity.actor.name}
                   size="xs"
                 />

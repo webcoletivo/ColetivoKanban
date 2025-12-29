@@ -39,21 +39,10 @@ export function usePreferences() {
       }
       return response.json()
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(['userPreferences'], data)
-      // Special handling for theme
-      if (data.theme) {
-        applyTheme(data.theme)
-      }
-    },
   })
 
-  // Sync theme on initial load
-  useEffect(() => {
-    if (query.data?.theme) {
-      applyTheme(query.data.theme)
-    }
-  }, [query.data?.theme])
+  // No manual theme syncing here anymore.
+  // next-themes handles the visual state, and SettingsForm handles the initial sync.
 
   return {
     preferences: query.data,
@@ -62,19 +51,4 @@ export function usePreferences() {
     updatePreferences: mutation.mutate,
     isUpdating: mutation.isPending,
   }
-}
-
-function applyTheme(theme: string) {
-  const root = window.document.documentElement
-  root.classList.remove('light', 'dark')
-
-  if (theme === 'system') {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-    root.classList.add(systemTheme)
-    return
-  }
-
-  root.classList.add(theme)
 }

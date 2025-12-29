@@ -5,9 +5,11 @@ import { cn, getInitials, getAssetUrl } from '@/lib/utils'
 
 interface AvatarProps {
   src?: string | null
+  avatarKey?: string | null
   name: string
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  updatedAt?: string | Date
 }
 
 const sizeClasses = {
@@ -37,16 +39,24 @@ function getColorFromName(name: string): string {
   return colors[Math.abs(hash) % colors.length]
 }
 
-export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
+export function Avatar({ src, avatarKey, name, size = 'md', className, updatedAt }: AvatarProps) {
   const [imageError, setImageError] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
+  
+  // Prioritize avatarKey, fallback to src
+  const imageSource = avatarKey || src
   
   React.useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Reset error state when image source changes
+  React.useEffect(() => {
+    setImageError(false)
+  }, [imageSource])
+
   // Always show fallback on server and initial client render to avoid hydration mismatch
-  const showImage = mounted && src && !imageError
+  const showImage = mounted && imageSource && !imageError
   const initials = getInitials(name)
   
   // Use a stable default color during SSR/initial render to avoid hydration mismatch
@@ -64,7 +74,7 @@ export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
     >
       {showImage ? (
         <img
-          src={getAssetUrl(src) || undefined}
+          src={getAssetUrl(imageSource, updatedAt) || undefined}
           alt={name}
           className="h-full w-full object-cover"
           onError={() => setImageError(true)}

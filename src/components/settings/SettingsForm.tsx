@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Monitor, Sun, Moon, Globe, Bell, Mail, Loader2 } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { updatePreferencesSchema, type UpdatePreferencesInput } from '@/lib/validations'
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { usePreferences } from '@/hooks/use-preferences'
 
 export function SettingsForm() {
+  const { setTheme } = useTheme()
   const { preferences, updatePreferences, isUpdating, isLoading } = usePreferences()
   const { addToast } = useToast()
 
@@ -31,8 +33,10 @@ export function SettingsForm() {
   })
 
   // Sync form with data from hook
+  const [initialized, setInitialized] = React.useState(false)
+
   React.useEffect(() => {
-    if (preferences) {
+    if (preferences && !initialized) {
       reset({
         theme: preferences.theme,
         timezone: preferences.timezone,
@@ -40,8 +44,14 @@ export function SettingsForm() {
         notificationsEnabled: preferences.notificationsEnabled,
         language: preferences.language,
       })
+      
+      // Sync visual theme ONLY on initial load to match server pref
+      if (preferences.theme) {
+        setTheme(preferences.theme)
+      }
+      setInitialized(true)
     }
-  }, [preferences, reset])
+  }, [preferences, reset, setTheme, initialized])
 
   const themeValue = watch('theme')
   const emailEnabled = watch('emailInvitesEnabled')
@@ -93,7 +103,10 @@ export function SettingsForm() {
               <button
                 key={theme.id}
                 type="button"
-                onClick={() => setValue('theme', theme.id as any)}
+                onClick={() => {
+                  setValue('theme', theme.id as any)
+                  setTheme(theme.id)
+                }}
                 className={cn(
                   'flex flex-col items-center gap-3 p-4 rounded-xl border transition-all relative overflow-hidden',
                   themeValue === theme.id

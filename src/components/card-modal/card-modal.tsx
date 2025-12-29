@@ -69,14 +69,14 @@ interface CardData {
     id: string
     content: string
     createdAt: string
-    user: { id: string; name: string; avatarUrl: string | null }
+    user: { id: string; name: string; avatarUrl: string | null; avatarKey?: string | null }
   }>
   activities: Array<{
     id: string
     type: string
     payload: Record<string, unknown>
     createdAt: string
-    actor: { id: string; name: string; avatarUrl: string | null } | null
+    actor: { id: string; name: string; avatarUrl: string | null; avatarKey?: string | null } | null
   }>
   coverType: string | null
   coverColor: string | null

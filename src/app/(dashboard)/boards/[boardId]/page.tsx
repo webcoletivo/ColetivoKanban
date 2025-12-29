@@ -97,6 +97,7 @@ async function fetchBoard(boardId: string): Promise<BoardData> {
 }
 
 import { useDraggableScroll } from '@/hooks/use-draggable-scroll'
+import { useBoardEvents } from '@/hooks/use-board-events'
 
 export default function BoardPage() {
   const params = useParams()
@@ -104,6 +105,9 @@ export default function BoardPage() {
   const queryClient = useQueryClient()
   const { addToast } = useToast()
   const boardId = params.boardId as string
+
+  // Enable real-time updates
+  useBoardEvents(boardId)
 
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [activeType, setActiveType] = React.useState<'column' | 'card' | null>(null)
