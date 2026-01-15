@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import path from "path";
 import fs from "fs";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { authorizeFileAccess } from "@/lib/file-auth";
+import { s3Client } from "@/lib/s3";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,57 +19,22 @@ export async function GET(req: NextRequest) {
     }
 
     const session = await auth();
-    const user = session?.user;
-
-    if (!user) {
-       return new NextResponse("Unauthorized", { status: 401 });
+    if (!session?.user) {
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // Authorization Logic (duplicated from inline)
-    if (key.startsWith(S3_PREFIXES.AVATARS + "/")) {
-       // Allow
-    } 
-    else if (key.startsWith(S3_PREFIXES.BACKGROUNDS + "/")) {
-        const parts = key.split("/");
-        if (parts.length >= 2) {
-            const boardId = parts[1];
-            const member = await prisma.boardMember.findUnique({
-                where: { boardId_userId: { boardId, userId: user.id } }
-            });
-            if (!member) return new NextResponse("Forbidden", { status: 403 });
-        }
-    }
-    else if (key.startsWith(S3_PREFIXES.COVERS + "/") || key.startsWith(S3_PREFIXES.ATTACHMENTS + "/")) {
-         const parts = key.split("/");
-         if (parts.length >= 2) {
-             const resourceId = parts[1];
-             const card = await prisma.card.findUnique({
-                 where: { id: resourceId },
-                 select: { boardId: true }
-             });
-             if (!card) return new NextResponse("Not Found", { status: 404 });
-             
-             const member = await prisma.boardMember.findUnique({
-                where: { boardId_userId: { boardId: card.boardId, userId: user.id } }
-            });
-            if (!member) return new NextResponse("Forbidden", { status: 403 });
-         }
+    const isAuthorized = await authorizeFileAccess(session, key);
+    if (!isAuthorized) {
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     const downloadFilename = filenameArg || path.basename(key);
 
     if (isUsingS3()) {
         try {
-            const s3Client = new S3Client({
-                region: process.env.S3_REGION!,
-                endpoint: process.env.S3_ENDPOINT || undefined,
-                credentials: {
-                    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-                    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-                },
-                forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
-            });
-
+            if (!s3Client) {
+                throw new Error("S3 client is not initialized");
+            }
             const command = new GetObjectCommand({
                 Bucket: process.env.S3_BUCKET!,
                 Key: key,
