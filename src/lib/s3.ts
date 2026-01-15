@@ -59,6 +59,8 @@ function getS3Client(): S3Client {
   return s3Client
 }
 
+export { s3Client };
+
 // ============================================
 // Storage Key Generators
 // ============================================

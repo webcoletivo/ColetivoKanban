@@ -12,13 +12,9 @@ export async function middleware(request: NextRequest) {
   })
 
   // Security Headers
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
     const csp = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data: https://i.ytimg.com https://img.youtube.com https://*.amazonaws.com; connect-src 'self' https://*.amazonaws.com; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://youtube-nocookie.com; media-src 'self' https://*.amazonaws.com;"
     
     response.headers.set('Content-Security-Policy', csp)
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
 
   return response
 }
@@ -26,10 +22,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all request paths except for the ones starting with:
-    // - api (API routes)
     // - _next/static (static files)
     // - _next/image (image optimization files)
     // - favicon.ico (favicon file)
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }

@@ -6,6 +6,8 @@ import path from "path";
 import fs from "fs";
 import { getFileStats, getFilePath } from "@/lib/storage";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { authorizeFileAccess } from "@/lib/file-auth";
+import { s3Client } from "@/lib/s3";
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,88 +19,21 @@ export async function GET(req: NextRequest) {
     }
 
     const session = await auth();
-    const user = session?.user;
-
-    // 1. Authentication check
-    if (!user) {
-       return new NextResponse("Unauthorized", { status: 401 });
+    if (!session?.user) {
+      return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    // 2. Authorization
-    if (key.startsWith(S3_PREFIXES.AVATARS + "/")) {
-       // Allow logged in users to view avatars
-    } 
-    else if (key.startsWith(S3_PREFIXES.BACKGROUNDS + "/")) {
-        const parts = key.split("/");
-        // backgrounds/boardId/filename
-        if (parts.length >= 2) {
-            const boardId = parts[1];
-            
-            // Check board membership
-            const member = await prisma.boardMember.findUnique({
-                where: {
-                    boardId_userId: {
-                        boardId,
-                        userId: user.id
-                    }
-                }
-            });
-            
-            if (!member) {
-                // Also verify if user is the creator or if board is public/etc? 
-                // For now strict membership
-                return new NextResponse("Forbidden", { status: 403 });
-            }
-        }
-    }
-    else if (key.startsWith(S3_PREFIXES.COVERS + "/") || key.startsWith(S3_PREFIXES.ATTACHMENTS + "/")) {
-         const parts = key.split("/");
-         // covers/cardId/filename
-         // attachments/cardId/filename
-         if (parts.length >= 2) {
-             const resourceId = parts[1]; 
-             
-             // Ensure resourceId is valid UUID to avoid path traversal attacks if Local
-             // Though 'split' limits scope, verify it's a card ID
-             
-             const card = await prisma.card.findUnique({
-                 where: { id: resourceId },
-                 select: { boardId: true }
-             });
-             
-             if (!card) {
-                  return new NextResponse("Not Found", { status: 404 });
-             }
-             
-             const member = await prisma.boardMember.findUnique({
-                where: {
-                    boardId_userId: {
-                        boardId: card.boardId,
-                        userId: user.id
-                    }
-                }
-            });
-            
-            if (!member) {
-                return new NextResponse("Forbidden", { status: 403 });
-            }
-         }
+    const isAuthorized = await authorizeFileAccess(session, key);
+    if (!isAuthorized) {
+      return new NextResponse('Forbidden', { status: 403 });
     }
 
     // 3. Serve File
     if (isUsingS3()) {
         try {
-            // Using Proxy/Stream strategy
-            const s3Client = new S3Client({
-                region: process.env.S3_REGION!,
-                endpoint: process.env.S3_ENDPOINT || undefined,
-                credentials: {
-                    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-                    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-                },
-                forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true'
-            });
-
+            if (!s3Client) {
+                throw new Error("S3 client is not initialized");
+            }
             const command = new GetObjectCommand({
                 Bucket: process.env.S3_BUCKET!,
                 Key: key,
